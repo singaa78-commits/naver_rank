@@ -1,0 +1,38 @@
+name: 데이터 업데이트 & 배포
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Python 설정
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 의존성 설치
+        run: pip install google-auth requests
+
+      - name: 시트 데이터 가져오기
+        env:
+          SERVICE_ACCOUNT_EMAIL: ${{ secrets.SERVICE_ACCOUNT_EMAIL }}
+          SERVICE_ACCOUNT_KEY:   ${{ secrets.SERVICE_ACCOUNT_KEY }}
+          RANK_SHEET_ID:         ${{ secrets.RANK_SHEET_ID }}
+          RANK_TAB:              ${{ secrets.RANK_TAB }}
+          REVIEW_SHEET_ID:       ${{ secrets.REVIEW_SHEET_ID }}
+          REVIEW_TAB:            ${{ secrets.REVIEW_TAB }}
+        run: python scripts/fetch_data.py
+
+      - name: GitHub Pages 배포
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
+          force_orphan: true
