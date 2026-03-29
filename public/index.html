@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="ko" class="theme-light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>네이버쇼핑 순위 대시보드</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script>if(typeof Chart!=='undefined')Chart.defaults.animation=false;</script>
+  <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{interpolate-size:allow-keywords}
+html.theme-light{
+  --bg:#EDEEF2;--surface:#fff;--surface2:#F4F5F9;--hover:#ECEDF2;
+  --border:rgba(0,0,0,0.07);--border2:rgba(0,0,0,0.12);
+  --text:#0D1117;--muted:#6E7A8A;
+  --green:#03C75A;--green-dk:#02A048;--green-bg:rgba(3,199,90,0.09);
+  --red:#E02020;--red-bg:rgba(224,32,32,0.08);--blue:#2563EB;
+  --sh:0 1px 4px rgba(0,0,0,0.07),0 4px 16px rgba(0,0,0,0.05);
+  --sh2:0 6px 28px rgba(0,0,0,0.11);
+  --accent:#03C75A;--positive:#059669;--negative:#E02020;--warning:#D97706;
+  --surface-hover:#ECEDF2;--accent-secondary:#2563EB;
+}
+html.theme-dark{
+  --bg:#0B0D13;--surface:#14171F;--surface2:#1C2030;--hover:#222840;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+  --text:#E8EAF0;--muted:#8890A8;
+  --green:#03C75A;--green-dk:#05E066;--green-bg:rgba(3,199,90,0.11);
+  --red:#F43F5E;--red-bg:rgba(244,63,94,0.1);--blue:#60A5FA;
+  --sh:0 1px 4px rgba(0,0,0,0.25),0 4px 16px rgba(0,0,0,0.2);
+  --sh2:0 6px 28px rgba(0,0,0,0.4);
+  --accent:#03C75A;--positive:#10B981;--negative:#F43F5E;--warning:#FBBF24;
+  --surface-hover:#222840;--accent-secondary:#60A5FA;
+}
+body{font-family:'Noto Sans KR','Inter',sans-serif;background:var(--bg);color:var(--text);
+  line-height:1.6;-webkit-font-smoothing:antialiased;min-height:100vh;transition:background .3s,color .3s}
+h1{font-size:2.8rem;font-weight:800;letter-spacing:-.03em}
+h2{font-size:2rem;font-weight:700}
+h3{font-size:1.5rem;font-weight:600}
+.wrap{max-width:1400px;margin:0 auto;padding:0 24px 80px}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;
+  padding:22px 0 18px;border-bottom:1px solid var(--border);margin-bottom:26px;flex-wrap:wrap;gap:12px}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:40px;height:40px;border-radius:10px;background:var(--green);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.brand-txt h1{font-size:1.35rem;margin-bottom:1px}
+.brand-txt p{font-size:.76rem;color:var(--muted)}
+.badges{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;
+  border-radius:20px;font-size:.73rem;font-weight:600;
+  background:var(--surface);border:1px solid var(--border);color:var(--muted)}
+.badge.live{color:var(--green);background:var(--green-bg);border-color:rgba(3,199,90,.2)}
+.badge.live::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+.status{display:none;align-items:center;gap:8px;padding:11px 15px;
+  border-radius:10px;font-size:.82rem;margin-bottom:16px;font-weight:500}
+.status.ok{background:var(--green-bg);color:var(--green-dk);border:1px solid rgba(3,199,90,.2);display:flex}
+.status.err{background:var(--red-bg);color:var(--red);border:1px solid rgba(224,32,32,.2);display:flex}
+.status.loading{background:rgba(37,99,235,.07);color:var(--blue);border:1px solid rgba(37,99,235,.2);display:flex}
+.spin{width:15px;height:15px;border:2px solid rgba(37,99,235,.2);border-top-color:var(--blue);
+  border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.alert-bar{display:none;background:var(--red-bg);border:1px solid rgba(224,32,32,.2);
+  border-radius:10px;padding:12px 16px;margin-bottom:18px}
+.alert-bar.show{display:block}
+.alert-hd{font-size:.78rem;font-weight:700;color:var(--red);display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.alert-chips{display:flex;flex-wrap:wrap;gap:7px}
+.alert-chip{padding:3px 10px;border-radius:6px;font-size:.74rem;font-weight:700;
+  background:rgba(224,32,32,.12);color:var(--red)}
+
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:20px}
+@media(max-width:900px){.kpis{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:580px){.kpis{grid-template-columns:repeat(2,1fr)}}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:18px 20px;box-shadow:var(--sh);transition:box-shadow .2s}
+.kpi:hover{box-shadow:var(--sh2)}
+.kpi-lbl{font-size:.69rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px}
+.kpi-val{font-size:2rem;font-weight:800;line-height:1;margin-bottom:5px}
+.kpi-val.g{color:var(--green)}.kpi-val.r{color:var(--red)}
+.delta{display:inline-flex;align-items:center;gap:3px;font-size:.74rem;font-weight:700;padding:2px 7px;border-radius:10px}
+.delta.up{color:var(--positive);background:rgba(5,150,105,.1)}
+.delta.dn{color:var(--negative);background:rgba(224,32,32,.1)}
+.delta.eq{color:var(--muted);background:var(--surface2)}
+
+.two-col{display:grid;grid-template-columns:1.15fr .85fr;gap:18px;margin-bottom:18px}
+@media(max-width:900px){.two-col{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px 24px;box-shadow:var(--sh)}
+.panel-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px}
+.panel-hd h4{font-size:.92rem;font-weight:700;display:flex;align-items:center;gap:7px}
+.panel-sub{font-size:.73rem;color:var(--muted)}
+
+.tbl-wrap{overflow-x:auto}
+.tbl{width:100%;border-collapse:collapse}
+.tbl thead th{font-size:.67rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;
+  padding:0 10px 10px;text-align:left;border-bottom:1px solid var(--border)}
+.tbl thead th.c{text-align:center}
+.tbl tbody tr{cursor:pointer;transition:background .15s}
+.tbl tbody tr:hover{background:var(--hover)}
+.tbl tbody tr.sel{background:var(--green-bg)}
+.tbl td{padding:10px;font-size:.84rem;border-bottom:1px solid var(--border)}
+.tbl td.c{text-align:center}
+.tbl tbody tr:last-child td{border-bottom:none}
+
+.rb{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:7px;font-weight:800;font-size:.82rem}
+.rb1{background:rgba(251,191,36,.18);color:#B45309}
+.rb2{background:rgba(148,163,184,.18);color:#64748B}
+.rb3{background:rgba(180,83,9,.15);color:#92400E}
+.rbn{background:var(--surface2);color:var(--muted)}
+.chg{display:inline-flex;align-items:center;gap:2px;font-size:.78rem;font-weight:700}
+.chg.up{color:var(--positive)}.chg.dn{color:var(--negative)}.chg.eq{color:var(--muted)}
+
+.ch{position:relative}.ch.h280{height:280px}.ch.h360{height:360px}
+
+.pills{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
+.pill{padding:5px 13px;border-radius:20px;font-size:.77rem;font-weight:600;
+  border:1.5px solid var(--border2);background:var(--surface);color:var(--muted);cursor:pointer;transition:all .15s}
+.pill:hover{border-color:var(--green);color:var(--green)}
+.pill.on{background:var(--green);border-color:var(--green);color:#fff}
+
+/* REVIEW CARDS */
+.rev-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.rcard{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;box-shadow:var(--sh);transition:box-shadow .2s}
+.rcard:hover{box-shadow:var(--sh2)}
+.rcard-name{font-size:.82rem;font-weight:600;color:var(--text);margin-bottom:4px;line-height:1.4}
+.rcard-price{font-size:.75rem;color:var(--muted);margin-bottom:10px}
+.rcard-score{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.rcard-num{font-size:1.8rem;font-weight:800;line-height:1;color:var(--text)}
+.stars-wrap{display:flex;flex-direction:column;gap:2px}
+.stars{color:#F59E0B;font-size:.9rem;letter-spacing:1px}
+.rcard-cnt{font-size:.73rem;color:var(--muted)}
+.rcard-url{font-size:.71rem;color:var(--green);text-decoration:none;display:block;margin-top:8px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rcard-url:hover{text-decoration:underline}
+
+/* STAR BAR */
+.star-bar-row{display:flex;flex-direction:column;gap:3px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.star-bar{display:flex;align-items:center;gap:6px;font-size:.7rem;color:var(--muted)}
+.star-bar-lbl{min-width:20px;text-align:right}
+.star-bar-track{flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+.star-bar-fill{height:100%;background:#F59E0B;border-radius:3px}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.animate{animation:fadeUp .45s ease-out both}
+.d1{animation-delay:.06s}.d2{animation-delay:.12s}.d3{animation-delay:.18s}.d4{animation-delay:.24s}.d5{animation-delay:.3s}
+[data-reveal]{opacity:0;transform:translateY(14px);transition:opacity .5s,transform .5s}
+[data-reveal].vis{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}[data-reveal]{opacity:1;transform:none}}
+
+.viz-menu{position:fixed;top:16px;right:16px;z-index:9999}
+.viz-menu-toggle{width:44px;height:44px;border-radius:12px;background:var(--surface);border:1px solid var(--border);
+  color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(12px);transition:all .2s;box-shadow:var(--sh)}
+.viz-menu-toggle:hover{background:var(--hover)}
+.viz-menu-dropdown{position:absolute;top:52px;right:0;min-width:185px;background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;padding:8px;opacity:0;visibility:hidden;transform:translateY(-8px);
+  transition:all .2s;backdrop-filter:blur(16px);box-shadow:var(--sh2)}
+.viz-menu-dropdown.open{opacity:1;visibility:visible;transform:translateY(0)}
+.viz-menu-dropdown button{width:100%;padding:9px 13px;border:none;border-radius:7px;background:transparent;color:var(--text);
+  font-size:.84rem;font-family:inherit;cursor:pointer;text-align:left;display:flex;align-items:center;gap:9px;transition:background .15s}
+.viz-menu-dropdown button:hover{background:var(--hover)}
+.tbl thead th.sortable{cursor:pointer;user-select:none;transition:color .15s}
+.tbl thead th.sortable:hover{color:var(--green)}
+.tbl thead th.sort-active{color:var(--green)}
+.sort-icon{font-size:.65rem;margin-left:2px;opacity:.6}
+.tbl thead th.sort-active .sort-icon{opacity:1}
+@media print{body{background:#fff!important}.viz-menu{display:none!important}}
+@media(max-width:375px){body{overflow-x:hidden}}
+</style>
+</head>
+<body>
+
+<div class="viz-menu">
+  <button class="viz-menu-toggle" onclick="toggleMenu()" aria-label="메뉴">
+    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <line x1="3" y1="5" x2="17" y2="5"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="15" x2="17" y2="15"/>
+    </svg>
+  </button>
+  <div class="viz-menu-dropdown" id="vizMenuDropdown">
+    <button onclick="cycleTheme()"><span id="themeIcon">🌙</span><span id="themeLabel">다크 모드</span></button>
+    <button onclick="dlImg()">📥 PNG 저장</button>
+    <button onclick="window.print()">🖨️ 인쇄 / PDF</button>
+    <button onclick="load()">🔄 새로고침</button>
+  </div>
+</div>
+
+<main id="main-content" role="main">
+<div class="wrap">
+
+<header class="topbar animate">
+  <div class="brand">
+    <div class="logo">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round">
+        <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>
+      </svg>
+    </div>
+    <div class="brand-txt">
+      <h1>네이버쇼핑 순위 대시보드</h1>
+      <p>자사몰 가격경쟁력 &amp; 순위·평점 모니터링</p>
+    </div>
+  </div>
+  <div class="badges">
+    <span class="badge" id="liveBadge">⏳ 연결 중…</span>
+    <span class="badge" id="dateBadge">📅 —</span>
+    <span class="badge" id="updateLabel" style="font-size:.68rem">갱신: —</span>
+  </div>
+</header>
+
+<div class="status loading" id="statusEl" style="display:flex">
+  <div class="spin"></div>&nbsp; 구글 시트 데이터 불러오는 중…
+</div>
+
+<div class="alert-bar" id="alertBar">
+  <div class="alert-hd">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    순위 하락 경보 — 전일 대비 내려간 제품
+  </div>
+  <div class="alert-chips" id="alertChips"></div>
+</div>
+
+<section class="kpis">
+  <div class="kpi animate d1"><div class="kpi-lbl">트래킹 제품</div><div class="kpi-val g" id="k-total">—</div><div style="font-size:.73rem;color:var(--muted)">총 제품 수</div></div>
+  <div class="kpi animate d2"><div class="kpi-lbl">1위 제품</div><div class="kpi-val g" id="k-rank1">—</div><div class="delta eq" id="k-rank1-d" style="margin-top:4px">—</div></div>
+  <div class="kpi animate d3"><div class="kpi-lbl">평균 순위</div><div class="kpi-val" id="k-avg">—</div><div class="delta eq" id="k-avg-d" style="margin-top:4px">—</div></div>
+  <div class="kpi animate d4"><div class="kpi-lbl">순위 하락</div><div class="kpi-val r" id="k-drop">—</div><div style="font-size:.73rem;color:var(--muted)">전일 대비</div></div>
+  <div class="kpi animate d5"><div class="kpi-lbl">평균 평점</div><div class="kpi-val" id="k-rating">—</div><div style="font-size:.73rem;color:var(--muted)" id="k-reviews">—</div></div>
+</section>
+
+<!-- 순위 테이블 + 바차트 -->
+<div class="two-col animate d2" data-reveal>
+  <div class="panel">
+    <div class="panel-hd">
+      <h4><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg>오늘 순위 현황</h4>
+      <span class="panel-sub" id="todayLabel">—</span>
+    </div>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr>
+          <th>제품명</th><th>키워드</th>
+          <th class="c sortable" onclick="setSort('rank')" id="th-rank">순위 <span class="sort-icon" id="si-rank">↕</span></th>
+          <th class="c">전일 변화</th>
+          <th>자사가격</th>
+          <th class="c sortable" onclick="setSort('rating')" id="th-rating">평점 <span class="sort-icon" id="si-rating">↕</span></th>
+          <th class="c sortable" onclick="setSort('count')" id="th-count">리뷰수 <span class="sort-icon" id="si-count">↕</span></th>
+        </tr></thead>
+        <tbody id="rankTbody"></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-hd">
+      <h4><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.2"><rect x="18" y="3" width="4" height="18"/><rect x="10" y="8" width="4" height="13"/><rect x="2" y="13" width="4" height="8"/></svg>제품별 현재 순위</h4>
+      <span class="panel-sub">낮을수록 좋음</span>
+    </div>
+    <div class="ch h280"><canvas id="barChart" role="img" aria-label="제품별 순위 바차트"></canvas></div>
+  </div>
+</div>
+
+<!-- 순위 추이 -->
+<div class="panel animate" data-reveal style="margin-bottom:18px">
+  <div class="panel-hd">
+    <h4><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>순위 추이</h4>
+    <span class="panel-sub" id="trendSub">제품을 선택하세요</span>
+  </div>
+  <div class="pills" id="pillsRow"></div>
+  <div class="ch h360"><canvas id="trendChart" role="img" aria-label="순위 추이 라인차트"></canvas></div>
+</div>
+
+<!-- 평점/리뷰 카드 -->
+<section data-reveal style="margin-bottom:24px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <h3 style="font-size:1rem;font-weight:700;display:flex;align-items:center;gap:7px">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      제품별 평점 &amp; 리뷰 <span style="font-size:.72rem;font-weight:400;color:var(--muted)">(product_re)</span>
+    </h3>
+    <span style="font-size:.73rem;color:var(--muted)" id="reviewDateLabel">—</span>
+  </div>
+  <div class="rev-grid" id="reviewGrid"></div>
+  <p id="noReview" style="color:var(--muted);font-size:.82rem;display:none">리뷰 데이터가 없습니다.</p>
+</section>
+
+<!-- 평점 추이 차트 -->
+<div class="panel animate" data-reveal style="margin-bottom:18px">
+  <div class="panel-hd">
+    <h4><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2.2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>평점 &amp; 리뷰수 추이</h4>
+    <span class="panel-sub" id="ratingTrendSub">제품을 선택하세요</span>
+  </div>
+  <div class="pills" id="revPillsRow"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="ch h280"><canvas id="ratingChart" role="img" aria-label="평점 추이"></canvas></div>
+    <div class="ch h280"><canvas id="reviewCountChart" role="img" aria-label="리뷰수 추이"></canvas></div>
+  </div>
+</div>
+
+</div>
+</main>
+
+<script>
+// ═══════════════════════════════════
+// MENU & THEME
+// ═══════════════════════════════════
+function toggleMenu(){var d=document.getElementById('vizMenuDropdown');if(d)d.classList.toggle('open');}
+document.addEventListener('click',function(e){if(!e.target.closest('.viz-menu')){var d=document.getElementById('vizMenuDropdown');if(d)d.classList.remove('open');}});
+var currentTheme=localStorage.getItem('viz-theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');
+function applyTheme(t){
+  document.documentElement.className='theme-'+t;
+  document.getElementById('themeIcon').textContent=t==='dark'?'☀️':'🌙';
+  document.getElementById('themeLabel').textContent=t==='dark'?'라이트 모드':'다크 모드';
+  localStorage.setItem('viz-theme',t);currentTheme=t;
+  if(typeof onThemeChange==='function')onThemeChange();
+}
+function cycleTheme(){applyTheme(currentTheme==='dark'?'light':'dark');}
+applyTheme(currentTheme);
+var ro=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('vis');ro.unobserve(e.target);}});},{threshold:.1});
+document.querySelectorAll('[data-reveal]').forEach(function(el){ro.observe(el);});
+async function dlImg(){var m=document.querySelector('.viz-menu');m.style.display='none';try{var url=await htmlToImage.toPng(document.body,{quality:1,pixelRatio:2});var a=document.createElement('a');a.href=url;a.download='naver-rank-dashboard.png';a.click();}catch(e){}m.style.display='';}
+
+function setStatus(msg,type){var el=document.getElementById('statusEl');el.className='status '+(type||'ok');el.innerHTML=msg;}
+function hideStatus(){document.getElementById('statusEl').style.display='none';}
+
+// ═══════════════════════════════════
+// DATA LOAD — data.json fetch (키 없음)
+// ═══════════════════════════════════
+var barObj=null,trendObj=null,ratingObj=null,revCntObj=null;
+var appData=null,selProd=null,selRevProd=null;
+
+async function load(){
+  setStatus('<div class="spin"></div>&nbsp; 데이터 불러오는 중…','loading');
+  document.getElementById('liveBadge').textContent='⏳ 로딩 중…';
+  document.getElementById('liveBadge').className='badge';
+  try{
+    // data.json — GitHub Actions가 매일 생성
+    var resp=await fetch('./data.json?v='+Date.now());
+    if(!resp.ok)throw new Error('data.json 로드 실패 ('+resp.status+')');
+    var json=await resp.json();
+
+    // data.json 구조 → appData 형태로 변환
+    appData={
+      today:     json.rank.today,
+      yesterday: json.rank.yesterday,
+      products:  json.rank.products,
+      trends:    json.rank.trends,
+      reviews:   json.review.latest,
+      reviewTrends: json.review.trends,
+    };
+
+    renderAll(appData);
+    document.getElementById('liveBadge').textContent='● 최신 데이터';
+    document.getElementById('liveBadge').className='badge live';
+    document.getElementById('dateBadge').textContent='📅 '+appData.today;
+    document.getElementById('updateLabel').textContent='갱신: '+json.updatedAt;
+    setStatus('✅ 로드 완료 — '+appData.products.length+'개 제품 · 리뷰 '+appData.reviews.length+'개','ok');
+    setTimeout(hideStatus,5000);
+  }catch(err){
+    console.error(err);
+    setStatus('❌ '+err.message+' — data.json이 아직 생성되지 않았거나 GitHub Pages 배포가 필요합니다.','err');
+    document.getElementById('liveBadge').textContent='⚠ 오류';
+  }
+}
+
+// ═══════════════════════════════════
+// RENDER ALL
+// ═══════════════════════════════════
+function renderAll(d){
+  renderKPI(d);renderAlerts(d);renderTable(d);renderBarChart(d);renderPills(d);
+  renderReviews(d);renderRevPills(d);
+  document.getElementById('todayLabel').textContent=d.today;
+  document.getElementById('reviewDateLabel').textContent='기준: '+(d.reviews[0]?d.reviews[0].date:d.today);
+}
+
+function renderKPI(d){
+  var validRanks=d.products.filter(function(p){return p.rank!==null;});
+  var r1=validRanks.filter(function(p){return p.rank===1;}).length;
+  var pr1=d.products.filter(function(p){return p.prevRank===1;}).length;
+  var avg=validRanks.length?(validRanks.reduce(function(s,p){return s+p.rank;},0)/validRanks.length).toFixed(1):'—';
+  var pValidRanks=d.products.filter(function(p){return p.prevRank!==null;});
+  var pavg=pValidRanks.length?(pValidRanks.reduce(function(s,p){return s+p.prevRank;},0)/pValidRanks.length).toFixed(1):avg;
+  var drops=d.products.filter(function(p){return p.rank!==null&&p.prevRank!==null&&p.rank>p.prevRank;}).length;
+  var totalR=d.reviews.reduce(function(s,r){return s+r.count;},0);
+  var avgRat=d.reviews.length?(d.reviews.reduce(function(s,r){return s+r.rating;},0)/d.reviews.length).toFixed(2):'—';
+  document.getElementById('k-total').textContent=d.products.length||d.reviews.length;
+  document.getElementById('k-rank1').textContent=r1;
+  var r1d=r1-pr1,r1el=document.getElementById('k-rank1-d');
+  r1el.textContent=r1d>0?'▲ '+r1d+' 증가':r1d<0?'▼ '+Math.abs(r1d)+' 감소':'전일 동일';
+  r1el.className='delta '+(r1d>0?'up':r1d<0?'dn':'eq');
+  document.getElementById('k-avg').textContent=avg;
+  var ad=(parseFloat(pavg)-parseFloat(avg)).toFixed(1),adel=document.getElementById('k-avg-d');
+  adel.textContent=ad>0?'▲ '+ad+' 개선':ad<0?'▼ '+Math.abs(ad)+' 하락':'전일 동일';
+  adel.className='delta '+(ad>0?'up':ad<0?'dn':'eq');
+  document.getElementById('k-drop').textContent=drops;
+  document.getElementById('k-rating').textContent=avgRat;
+  document.getElementById('k-reviews').textContent=totalR?'총 '+totalR.toLocaleString()+' 리뷰':'리뷰 집계 중';
+}
+
+function renderAlerts(d){
+  var drops=d.products.filter(function(p){return p.rank!==null&&p.prevRank!==null&&p.rank>p.prevRank;});
+  var bar=document.getElementById('alertBar');
+  if(!drops.length){bar.classList.remove('show');return;}
+  bar.classList.add('show');
+  document.getElementById('alertChips').innerHTML=drops.map(function(p){
+    return '<div class="alert-chip">'+p.name+' ('+p.prevRank+'위→'+p.rank+'위 ▼'+(p.rank-p.prevRank)+')</div>';
+  }).join('');
+}
+
+var sortKey='rank',sortDir=1;
+function setSort(key){
+  if(sortKey===key)sortDir*=-1;
+  else{sortKey=key;sortDir=key==='rank'?1:-1;}
+  ['rank','rating','count'].forEach(function(k){
+    var si=document.getElementById('si-'+k),th=document.getElementById('th-'+k);
+    if(si)si.textContent=sortKey===k?(sortDir===1?'↑':'↓'):'↕';
+    if(th)th.classList.toggle('sort-active',sortKey===k);
+  });
+  if(appData)renderTable(appData);
+}
+
+function renderTable(d){
+  var tb=document.getElementById('rankTbody');tb.innerHTML='';
+  var sorted=d.products.slice().sort(function(a,b){
+    var ra=appData.reviews.find(function(r){return r.name===a.name;}),rb=appData.reviews.find(function(r){return r.name===b.name;});
+    var va,vb;
+    if(sortKey==='rank'){
+      va=a.rank;vb=b.rank;
+      if(va===null&&vb===null)return 0;
+      if(va===null)return 1;if(vb===null)return -1;
+      return(va-vb)*sortDir;
+    }else if(sortKey==='rating'){va=ra?ra.rating:null;vb=rb?rb.rating:null;}
+    else{va=ra?ra.count:null;vb=rb?rb.count:null;}
+    if(va===null&&vb===null)return 0;
+    if(va===null)return 1;if(vb===null)return -1;
+    return(va-vb)*sortDir;
+  });
+  sorted.forEach(function(p){
+    var rbc=p.rank===1?'rb1':p.rank===2?'rb2':p.rank===3?'rb3':'rbn';
+    var rankCell=p.rank!==null?'<span class="rb '+rbc+'">'+p.rank+'</span>':'';
+    var diff=(p.prevRank!==null&&p.rank!==null)?(p.prevRank-p.rank):null;
+    var chg=diff===null?'':diff>0?'<span class="chg up">▲'+diff+'</span>':diff<0?'<span class="chg dn">▼'+Math.abs(diff)+'</span>':'<span class="chg eq">—</span>';
+    var rev=appData.reviews.find(function(r){return r.name===p.name;});
+    var rat=rev?'<span style="color:#F59E0B;font-weight:700">★</span> '+rev.rating:'<span style="color:var(--muted)">—</span>';
+    var cnt=rev?rev.count.toLocaleString()+'개':'<span style="color:var(--muted)">—</span>';
+    var kwHtml=p.keyword?'<span style="display:inline-block;padding:2px 8px;border-radius:5px;font-size:.72rem;font-weight:600;background:var(--green-bg);color:var(--green-dk)">'+p.keyword+'</span>':'';
+    var tr=document.createElement('tr');
+    if(selProd===p.name)tr.classList.add('sel');
+    tr.innerHTML='<td style="font-weight:600">'+p.name+'</td><td>'+kwHtml+'</td><td class="c">'+rankCell+'</td><td class="c">'+chg+'</td><td>'+(p.myPrice?'₩'+p.myPrice.toLocaleString():'—')+'</td><td class="c">'+rat+'</td><td class="c" style="color:var(--muted);font-size:.82rem">'+cnt+'</td>';
+    tr.addEventListener('click',function(){selectProd(p.name,tr);});
+    tb.appendChild(tr);
+  });
+}
+
+function gc(){var dk=currentTheme==='dark';return{text:dk?'#E8EAF0':'#0D1117',muted:dk?'#8890A8':'#6E7A8A',grid:dk?'rgba(255,255,255,0.04)':'rgba(0,0,0,0.05)'};}
+
+function renderBarChart(d){
+  if(barObj){try{barObj.destroy();}catch(e){}}
+  var cv=document.getElementById('barChart');if(!cv||typeof Chart==='undefined')return;
+  var c=gc(),s=d.products.filter(function(p){return p.rank!==null;}).slice().sort(function(a,b){return a.rank-b.rank;});
+  barObj=new Chart(cv,{type:'bar',data:{
+    labels:s.map(function(p){return p.name.length>12?p.name.slice(0,12)+'…':p.name;}),
+    datasets:[{label:'순위',data:s.map(function(p){return p.rank;}),
+      backgroundColor:s.map(function(p){return p.rank===1?'rgba(3,199,90,0.75)':p.rank===2?'rgba(59,130,246,0.7)':p.rank===3?'rgba(245,158,11,0.7)':'rgba(148,163,184,0.55)';}),
+      borderRadius:5,borderSkipped:false}]
+  },options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+    plugins:{legend:{display:false},tooltip:{enabled:true,callbacks:{label:function(ctx){return ' '+ctx.raw+'위';}}}},
+    scales:{x:{min:0,ticks:{color:c.text,stepSize:1,callback:function(v){return v+'위';}},grid:{color:c.grid}},
+      y:{ticks:{color:c.muted,font:{size:11}},grid:{display:false}}}}});
+}
+
+function renderPills(d){
+  var row=document.getElementById('pillsRow');row.innerHTML='';
+  d.products.forEach(function(p,i){
+    var btn=document.createElement('button');
+    btn.className='pill'+(i===0?' on':'');
+    btn.textContent=p.name.length>14?p.name.slice(0,14)+'…':p.name;
+    btn.dataset.n=p.name;
+    btn.addEventListener('click',function(){selectProd(p.name,null);});
+    row.appendChild(btn);
+  });
+  if(d.products.length)selectProd(d.products[0].name,null);
+}
+
+function selectProd(name,trEl){
+  selProd=name;
+  document.querySelectorAll('#pillsRow .pill').forEach(function(p){p.classList.toggle('on',p.dataset.n===name);});
+  document.querySelectorAll('#rankTbody tr').forEach(function(r){r.classList.remove('sel');});
+  if(trEl)trEl.classList.add('sel');
+  document.getElementById('trendSub').textContent=name;
+  renderTrend(name);
+}
+
+function renderTrend(name){
+  if(!appData)return;
+  if(trendObj){try{trendObj.destroy();}catch(e){}}
+  var cv=document.getElementById('trendChart');if(!cv||typeof Chart==='undefined')return;
+  var c=gc(),ranks=appData.trends.data[name]||[];
+  trendObj=new Chart(cv,{type:'line',data:{
+    labels:appData.trends.dates,
+    datasets:[{label:name,data:ranks,
+      borderColor:'rgba(3,199,90,0.85)',backgroundColor:'rgba(3,199,90,0.07)',
+      pointBackgroundColor:ranks.map(function(r){return r===1?'#03C75A':r<=2?'#3b82f6':'rgba(3,199,90,0.8)';}),
+      pointRadius:6,pointHoverRadius:9,borderWidth:2.5,fill:true,tension:0.35}]
+  },options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{enabled:true,callbacks:{label:function(ctx){return ' 순위: '+ctx.raw+'위';}}}},
+    scales:{x:{ticks:{color:c.text},grid:{color:c.grid}},
+      y:{reverse:true,min:1,suggestedMax:7,ticks:{color:c.text,stepSize:1,callback:function(v){return v+'위';}},grid:{color:c.grid}}}}});
+}
+
+function renderReviews(d){
+  var grid=document.getElementById('reviewGrid'),noR=document.getElementById('noReview');
+  grid.innerHTML='';
+  if(!d.reviews||!d.reviews.length){noR.style.display='block';return;}
+  noR.style.display='none';
+  var sorted=d.reviews.slice().sort(function(a,b){return b.rating-a.rating;});
+  sorted.forEach(function(r){
+    var starFull=Math.floor(r.rating);
+    var stars='★'.repeat(starFull)+(r.rating-starFull>=0.5?'½':'')+'☆'.repeat(5-starFull-(r.rating-starFull>=0.5?1:0));
+    var div=document.createElement('div');div.className='rcard';
+    var urlShort=r.url.replace('https://smartstore.naver.com/','').replace('https://','');
+    div.innerHTML='<div class="rcard-name">'+r.name+'</div>'+
+      '<div class="rcard-price">'+(r.price?'₩'+r.price.toLocaleString():'—')+'</div>'+
+      '<div class="rcard-score"><span class="rcard-num">'+r.rating.toFixed(1)+'</span>'+
+      '<div class="stars-wrap"><span class="stars">'+stars+'</span>'+
+      '<span class="rcard-cnt">리뷰 '+r.count.toLocaleString()+'개</span></div></div>'+
+      (r.url?'<a class="rcard-url" href="'+r.url+'" target="_blank" rel="noopener">🔗 '+urlShort+'</a>':'');
+    grid.appendChild(div);
+  });
+}
+
+function renderRevPills(d){
+  var row=document.getElementById('revPillsRow');row.innerHTML='';
+  if(!d.reviews||!d.reviews.length)return;
+  d.reviews.forEach(function(r,i){
+    var btn=document.createElement('button');
+    btn.className='pill'+(i===0?' on':'');
+    btn.textContent=r.name.length>14?r.name.slice(0,14)+'…':r.name;
+    btn.dataset.n=r.name;
+    btn.addEventListener('click',function(){selectRevProd(r.name);});
+    row.appendChild(btn);
+  });
+  if(d.reviews.length)selectRevProd(d.reviews[0].name);
+}
+
+function selectRevProd(name){
+  selRevProd=name;
+  document.querySelectorAll('#revPillsRow .pill').forEach(function(p){p.classList.toggle('on',p.dataset.n===name);});
+  document.getElementById('ratingTrendSub').textContent=name;
+  renderRatingTrend(name);
+}
+
+function renderRatingTrend(name){
+  if(!appData||!appData.reviewTrends)return;
+  var trend=appData.reviewTrends.data[name];
+  var dates=appData.reviewTrends.dates||[];
+  var c=gc();
+  if(ratingObj){try{ratingObj.destroy();}catch(e){}}
+  var cv1=document.getElementById('ratingChart');
+  if(cv1&&trend&&typeof Chart!=='undefined'){
+    ratingObj=new Chart(cv1,{type:'line',data:{
+      labels:dates,
+      datasets:[{label:'평점',data:trend.ratings,
+        borderColor:'#F59E0B',backgroundColor:'rgba(245,158,11,0.08)',
+        pointBackgroundColor:'#F59E0B',pointRadius:5,pointHoverRadius:8,
+        borderWidth:2.5,fill:true,tension:0.35}]
+    },options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{enabled:true,callbacks:{label:function(ctx){return ' 평점: '+ctx.raw;}}}},
+      scales:{x:{ticks:{color:c.text,font:{size:10}},grid:{color:c.grid}},
+        y:{min:1,max:5,ticks:{color:c.text,stepSize:0.5},grid:{color:c.grid},
+          title:{display:true,text:'평점',color:c.muted,font:{size:11}}}}}});
+  }
+  if(revCntObj){try{revCntObj.destroy();}catch(e){}}
+  var cv2=document.getElementById('reviewCountChart');
+  if(cv2&&trend&&typeof Chart!=='undefined'){
+    revCntObj=new Chart(cv2,{type:'bar',data:{
+      labels:dates,
+      datasets:[{label:'리뷰수',data:trend.counts,
+        backgroundColor:'rgba(99,102,241,0.65)',borderRadius:4,borderSkipped:false}]
+    },options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{enabled:true,callbacks:{label:function(ctx){return ' 리뷰: '+ctx.raw.toLocaleString()+'개';}}}},
+      scales:{x:{ticks:{color:c.text,font:{size:10}},grid:{color:c.grid}},
+        y:{ticks:{color:c.text},grid:{color:c.grid},
+          title:{display:true,text:'리뷰수',color:c.muted,font:{size:11}}}}}});
+  }
+}
+
+function onThemeChange(){
+  if(appData){renderBarChart(appData);if(selProd)renderTrend(selProd);if(selRevProd)renderRatingTrend(selRevProd);}
+}
+
+window.addEventListener('DOMContentLoaded',load);
+</script>
+</body>
+</html>
