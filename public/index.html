@@ -167,21 +167,6 @@ h3{font-size:1.5rem;font-weight:600}
 .tbl thead th.sort-active{color:var(--green)}
 .sort-icon{font-size:.65rem;margin-left:2px;opacity:.6}
 .tbl thead th.sort-active .sort-icon{opacity:1}
-.tbl thead th.sortable{cursor:pointer;user-select:none;transition:color .15s}
-.tbl thead th.sortable:hover{color:var(--green)}
-.tbl thead th.sort-active{color:var(--green)}
-.sort-icon{font-size:.65rem;margin-left:2px;opacity:.6}
-.tbl thead th.sort-active .sort-icon{opacity:1}
-/* 순위 이탈 칩 */
-.escape-chip{padding:3px 10px;border-radius:6px;font-size:.74rem;font-weight:700;
-  background:rgba(217,119,6,0.15);color:var(--warning);margin-left:0}
-/* 기간 필터 */
-.period-btns{display:flex;gap:6px;flex-wrap:wrap}
-.period-btn{padding:4px 12px;border-radius:20px;font-size:.75rem;font-weight:600;
-  border:1.5px solid var(--border2);background:var(--surface);color:var(--muted);
-  cursor:pointer;transition:all .15s}
-.period-btn:hover{border-color:var(--green);color:var(--green)}
-.period-btn.on{background:var(--green);border-color:var(--green);color:#fff}
 @media print{body{background:#fff!important}.viz-menu{display:none!important}}
 @media(max-width:375px){body{overflow-x:hidden}}
 </style>
@@ -231,7 +216,7 @@ h3{font-size:1.5rem;font-weight:600}
 <div class="alert-bar" id="alertBar">
   <div class="alert-hd">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-    순위 하락 · 이탈 경보
+    순위 하락 경보 — 전일 대비 내려간 제품
   </div>
   <div class="alert-chips" id="alertChips"></div>
 </div>
@@ -278,14 +263,7 @@ h3{font-size:1.5rem;font-weight:600}
 <div class="panel animate" data-reveal style="margin-bottom:18px">
   <div class="panel-hd">
     <h4><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>순위 추이</h4>
-    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-      <div class="period-btns" id="trendPeriodBtns">
-        <button class="period-btn" onclick="setTrendPeriod(7)">1주일</button>
-        <button class="period-btn on" onclick="setTrendPeriod(30)">1개월</button>
-        <button class="period-btn" onclick="setTrendPeriod(90)">3개월</button>
-      </div>
-      <span class="panel-sub" id="trendSub">제품을 선택하세요</span>
-    </div>
+    <span class="panel-sub" id="trendSub">제품을 선택하세요</span>
   </div>
   <div class="pills" id="pillsRow"></div>
   <div class="ch h360"><canvas id="trendChart" role="img" aria-label="순위 추이 라인차트"></canvas></div>
@@ -307,20 +285,13 @@ h3{font-size:1.5rem;font-weight:600}
 <!-- 평점 추이 차트 -->
 <div class="panel animate" data-reveal style="margin-bottom:18px">
   <div class="panel-hd">
-    <h4><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2.2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>평점 &amp; 리뷰 증가수 추이</h4>
-    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-      <div class="period-btns" id="revPeriodBtns">
-        <button class="period-btn" onclick="setRevPeriod(7)">1주일</button>
-        <button class="period-btn on" onclick="setRevPeriod(30)">1개월</button>
-        <button class="period-btn" onclick="setRevPeriod(90)">3개월</button>
-      </div>
-      <span class="panel-sub" id="ratingTrendSub">제품을 선택하세요</span>
-    </div>
+    <h4><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2.2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>평점 &amp; 리뷰수 추이</h4>
+    <span class="panel-sub" id="ratingTrendSub">제품을 선택하세요</span>
   </div>
   <div class="pills" id="revPillsRow"></div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
     <div class="ch h280"><canvas id="ratingChart" role="img" aria-label="평점 추이"></canvas></div>
-    <div class="ch h280"><canvas id="reviewCountChart" role="img" aria-label="리뷰 증가수 추이"></canvas></div>
+    <div class="ch h280"><canvas id="reviewCountChart" role="img" aria-label="리뷰수 추이"></canvas></div>
   </div>
 </div>
 
@@ -331,368 +302,6 @@ h3{font-size:1.5rem;font-weight:600}
 // ═══════════════════════════════════
 // MENU & THEME
 // ═══════════════════════════════════
-function toggleMenu(){var d=document.getElementById('vizMenuDropdown');if(d)d.classList.toggle('open');}
-document.addEventListener('click',function(e){if(!e.target.closest('.viz-menu')){var d=document.getElementById('vizMenuDropdown');if(d)d.classList.remove('open');}});
-var currentTheme=localStorage.getItem('viz-theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');
-function applyTheme(t){
-  document.documentElement.className='theme-'+t;
-  document.getElementById('themeIcon').textContent=t==='dark'?'☀️':'🌙';
-  document.getElementById('themeLabel').textContent=t==='dark'?'라이트 모드':'다크 모드';
-  localStorage.setItem('viz-theme',t);currentTheme=t;
-  if(typeof onThemeChange==='function')onThemeChange();
-}
-function cycleTheme(){applyTheme(currentTheme==='dark'?'light':'dark');}
-applyTheme(currentTheme);
-var ro=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('vis');ro.unobserve(e.target);}});},{threshold:.1});
-document.querySelectorAll('[data-reveal]').forEach(function(el){ro.observe(el);});
-async function dlImg(){var m=document.querySelector('.viz-menu');m.style.display='none';try{var url=await htmlToImage.toPng(document.body,{quality:1,pixelRatio:2});var a=document.createElement('a');a.href=url;a.download='naver-rank-dashboard.png';a.click();}catch(e){}m.style.display='';}
-
-function setStatus(msg,type){var el=document.getElementById('statusEl');el.className='status '+(type||'ok');el.innerHTML=msg;}
-function hideStatus(){document.getElementById('statusEl').style.display='none';}
-
-// ═══════════════════════════════════
-// STATE
-// ═══════════════════════════════════
-var barObj=null,trendObj=null,ratingObj=null,revCntObj=null;
-var appData=null,selProd=null,selRevProd=null;
-var trendPeriod=30, revPeriod=30; // 기본 1개월
-
-// ═══════════════════════════════════
-// LOAD data.json
-// ═══════════════════════════════════
-async function load(){
-  setStatus('<div class="spin"></div>&nbsp; 데이터 불러오는 중…','loading');
-  document.getElementById('liveBadge').textContent='⏳ 로딩 중…';
-  document.getElementById('liveBadge').className='badge';
-  try{
-    var resp=await fetch('./data.json?v='+Date.now());
-    if(!resp.ok)throw new Error('data.json 로드 실패 ('+resp.status+')');
-    var json=await resp.json();
-    appData={
-      today:       json.rank.today,
-      yesterday:   json.rank.yesterday,
-      products:    json.rank.products,
-      trends:      json.rank.trends,
-      reviews:     json.review.latest,
-      reviewTrends:json.review.trends,
-    };
-    renderAll(appData);
-    document.getElementById('liveBadge').textContent='● 최신 데이터';
-    document.getElementById('liveBadge').className='badge live';
-    document.getElementById('dateBadge').textContent='📅 '+appData.today;
-    document.getElementById('updateLabel').textContent='갱신: '+json.updatedAt;
-    setStatus('✅ 로드 완료 — '+appData.products.length+'개 제품 · 리뷰 '+appData.reviews.length+'개','ok');
-    setTimeout(hideStatus,5000);
-  }catch(err){
-    console.error(err);
-    setStatus('❌ '+err.message,'err');
-    document.getElementById('liveBadge').textContent='⚠ 오류';
-  }
-}
-
-// ═══════════════════════════════════
-// 기간 필터 유틸
-// ═══════════════════════════════════
-function sliceByPeriod(dates, dataArr, days){
-  var n=Math.min(days, dates.length);
-  return{dates:dates.slice(-n), data:dataArr.slice(-n)};
-}
-
-// ═══════════════════════════════════
-// PERIOD BUTTONS
-// ═══════════════════════════════════
-function setTrendPeriod(days){
-  trendPeriod=days;
-  document.querySelectorAll('#trendPeriodBtns .period-btn').forEach(function(b){
-    b.classList.toggle('on', parseInt(b.textContent)===(days===7?7:days===30?1:3)
-      || (days===7&&b.textContent==='1주일')
-      || (days===30&&b.textContent==='1개월')
-      || (days===90&&b.textContent==='3개월'));
-  });
-  if(selProd) renderTrend(selProd);
-}
-function setRevPeriod(days){
-  revPeriod=days;
-  document.querySelectorAll('#revPeriodBtns .period-btn').forEach(function(b){
-    b.classList.toggle('on',
-      (days===7&&b.textContent==='1주일')
-      ||(days===30&&b.textContent==='1개월')
-      ||(days===90&&b.textContent==='3개월'));
-  });
-  if(selRevProd) renderRatingTrend(selRevProd);
-}
-
-// ═══════════════════════════════════
-// RENDER ALL
-// ═══════════════════════════════════
-function renderAll(d){
-  renderKPI(d);renderAlerts(d);renderTable(d);renderBarChart(d);renderPills(d);
-  renderReviews(d);renderRevPills(d);
-  document.getElementById('todayLabel').textContent=d.today;
-  document.getElementById('reviewDateLabel').textContent='기준: '+(d.reviews[0]?d.reviews[0].date:d.today);
-}
-
-function renderKPI(d){
-  var validRanks=d.products.filter(function(p){return p.rank!==null;});
-  var r1=validRanks.filter(function(p){return p.rank===1;}).length;
-  var pr1=d.products.filter(function(p){return p.prevRank===1;}).length;
-  var avg=validRanks.length?(validRanks.reduce(function(s,p){return s+p.rank;},0)/validRanks.length).toFixed(1):'—';
-  var pValid=d.products.filter(function(p){return p.prevRank!==null;});
-  var pavg=pValid.length?(pValid.reduce(function(s,p){return s+p.prevRank;},0)/pValid.length).toFixed(1):avg;
-  var drops=d.products.filter(function(p){return p.rank!==null&&p.prevRank!==null&&p.rank>p.prevRank;}).length;
-  var escapes=d.products.filter(function(p){return p.rank===null&&p.prevRank!==null;}).length;
-  var totalR=d.reviews.reduce(function(s,r){return s+r.count;},0);
-  var avgRat=d.reviews.length?(d.reviews.reduce(function(s,r){return s+r.rating;},0)/d.reviews.length).toFixed(2):'—';
-  document.getElementById('k-total').textContent=d.products.length||d.reviews.length;
-  document.getElementById('k-rank1').textContent=r1;
-  var r1d=r1-pr1,r1el=document.getElementById('k-rank1-d');
-  r1el.textContent=r1d>0?'▲ '+r1d+' 증가':r1d<0?'▼ '+Math.abs(r1d)+' 감소':'전일 동일';
-  r1el.className='delta '+(r1d>0?'up':r1d<0?'dn':'eq');
-  document.getElementById('k-avg').textContent=avg;
-  var ad=(parseFloat(pavg)-parseFloat(avg)).toFixed(1),adel=document.getElementById('k-avg-d');
-  adel.textContent=ad>0?'▲ '+ad+' 개선':ad<0?'▼ '+Math.abs(ad)+' 하락':'전일 동일';
-  adel.className='delta '+(ad>0?'up':ad<0?'dn':'eq');
-  // 하락 + 이탈 합산
-  document.getElementById('k-drop').textContent=(drops+escapes);
-  document.getElementById('k-rating').textContent=avgRat;
-  document.getElementById('k-reviews').textContent=totalR?'총 '+totalR.toLocaleString()+' 리뷰':'리뷰 집계 중';
-}
-
-// ═══════════════════════════════════
-// 1. 순위 하락 + 이탈 경보
-// ═══════════════════════════════════
-function renderAlerts(d){
-  var drops=d.products.filter(function(p){return p.rank!==null&&p.prevRank!==null&&p.rank>p.prevRank;});
-  var escapes=d.products.filter(function(p){return p.rank===null&&p.prevRank!==null;});
-  var bar=document.getElementById('alertBar');
-  if(!drops.length&&!escapes.length){bar.classList.remove('show');return;}
-  bar.classList.add('show');
-  var html='';
-  drops.forEach(function(p){
-    html+='<div class="alert-chip">'+p.name+' ('+p.prevRank+'위→'+p.rank+'위 ▼'+(p.rank-p.prevRank)+')</div>';
-  });
-  escapes.forEach(function(p){
-    html+='<div class="escape-chip">⚠ '+p.name+' 순위 이탈 (전일 '+p.prevRank+'위)</div>';
-  });
-  document.getElementById('alertChips').innerHTML=html;
-}
-
-var sortKey='rank',sortDir=1;
-function setSort(key){
-  if(sortKey===key)sortDir*=-1;
-  else{sortKey=key;sortDir=key==='rank'?1:-1;}
-  ['rank','rating','count'].forEach(function(k){
-    var si=document.getElementById('si-'+k),th=document.getElementById('th-'+k);
-    if(si)si.textContent=sortKey===k?(sortDir===1?'↑':'↓'):'↕';
-    if(th)th.classList.toggle('sort-active',sortKey===k);
-  });
-  if(appData)renderTable(appData);
-}
-
-function renderTable(d){
-  var tb=document.getElementById('rankTbody');tb.innerHTML='';
-  var sorted=d.products.slice().sort(function(a,b){
-    var ra=appData.reviews.find(function(r){return r.name===a.name;}),rb=appData.reviews.find(function(r){return r.name===b.name;});
-    var va,vb;
-    if(sortKey==='rank'){
-      va=a.rank;vb=b.rank;
-      if(va===null&&vb===null)return 0;if(va===null)return 1;if(vb===null)return -1;
-      return(va-vb)*sortDir;
-    }else if(sortKey==='rating'){va=ra?ra.rating:null;vb=rb?rb.rating:null;}
-    else{va=ra?ra.count:null;vb=rb?rb.count:null;}
-    if(va===null&&vb===null)return 0;if(va===null)return 1;if(vb===null)return -1;
-    return(va-vb)*sortDir;
-  });
-  sorted.forEach(function(p){
-    var rbc=p.rank===1?'rb1':p.rank===2?'rb2':p.rank===3?'rb3':'rbn';
-    var rankCell=p.rank!==null?'<span class="rb '+rbc+'">'+p.rank+'</span>':'';
-    var diff=(p.prevRank!==null&&p.rank!==null)?(p.prevRank-p.rank):null;
-    var isEscape=(p.rank===null&&p.prevRank!==null);
-    var chg=isEscape
-      ?'<span style="font-size:.72rem;font-weight:700;color:var(--warning)">이탈</span>'
-      :diff===null?'':diff>0?'<span class="chg up">▲'+diff+'</span>':diff<0?'<span class="chg dn">▼'+Math.abs(diff)+'</span>':'<span class="chg eq">—</span>';
-    var rev=appData.reviews.find(function(r){return r.name===p.name;});
-    var rat=rev?'<span style="color:#F59E0B;font-weight:700">★</span> '+rev.rating:'<span style="color:var(--muted)">—</span>';
-    var cnt=rev?rev.count.toLocaleString()+'개':'<span style="color:var(--muted)">—</span>';
-    var kwHtml=p.keyword?'<span style="display:inline-block;padding:2px 8px;border-radius:5px;font-size:.72rem;font-weight:600;background:var(--green-bg);color:var(--green-dk)">'+p.keyword+'</span>':'';
-    var tr=document.createElement('tr');
-    if(isEscape)tr.style.opacity='0.6';
-    if(selProd===p.name)tr.classList.add('sel');
-    tr.innerHTML='<td style="font-weight:600">'+p.name+'</td><td>'+kwHtml+'</td><td class="c">'+rankCell+'</td><td class="c">'+chg+'</td><td>'+(p.myPrice?'₩'+p.myPrice.toLocaleString():'—')+'</td><td class="c">'+rat+'</td><td class="c" style="color:var(--muted);font-size:.82rem">'+cnt+'</td>';
-    tr.addEventListener('click',function(){selectProd(p.name,tr);});
-    tb.appendChild(tr);
-  });
-}
-
-function gc(){var dk=currentTheme==='dark';return{text:dk?'#E8EAF0':'#0D1117',muted:dk?'#8890A8':'#6E7A8A',grid:dk?'rgba(255,255,255,0.04)':'rgba(0,0,0,0.05)'};}
-
-function renderBarChart(d){
-  if(barObj){try{barObj.destroy();}catch(e){}}
-  var cv=document.getElementById('barChart');if(!cv||typeof Chart==='undefined')return;
-  var c=gc(),s=d.products.filter(function(p){return p.rank!==null;}).slice().sort(function(a,b){return a.rank-b.rank;});
-  barObj=new Chart(cv,{type:'bar',data:{
-    labels:s.map(function(p){return p.name.length>12?p.name.slice(0,12)+'…':p.name;}),
-    datasets:[{label:'순위',data:s.map(function(p){return p.rank;}),
-      backgroundColor:s.map(function(p){return p.rank===1?'rgba(3,199,90,0.75)':p.rank===2?'rgba(59,130,246,0.7)':p.rank===3?'rgba(245,158,11,0.7)':'rgba(148,163,184,0.55)';}),
-      borderRadius:5,borderSkipped:false}]
-  },options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
-    plugins:{legend:{display:false},tooltip:{enabled:true,callbacks:{label:function(ctx){return ' '+ctx.raw+'위';}}}},
-    scales:{x:{min:0,ticks:{color:c.text,stepSize:1,callback:function(v){return v+'위';}},grid:{color:c.grid}},
-      y:{ticks:{color:c.muted,font:{size:11}},grid:{display:false}}}}});
-}
-
-function renderPills(d){
-  var row=document.getElementById('pillsRow');row.innerHTML='';
-  d.products.forEach(function(p,i){
-    var btn=document.createElement('button');
-    btn.className='pill'+(i===0?' on':'');
-    btn.textContent=p.name.length>14?p.name.slice(0,14)+'…':p.name;
-    btn.dataset.n=p.name;
-    btn.addEventListener('click',function(){selectProd(p.name,null);});
-    row.appendChild(btn);
-  });
-  if(d.products.length)selectProd(d.products[0].name,null);
-}
-
-function selectProd(name,trEl){
-  selProd=name;
-  document.querySelectorAll('#pillsRow .pill').forEach(function(p){p.classList.toggle('on',p.dataset.n===name);});
-  document.querySelectorAll('#rankTbody tr').forEach(function(r){r.classList.remove('sel');});
-  if(trEl)trEl.classList.add('sel');
-  document.getElementById('trendSub').textContent=name;
-  renderTrend(name);
-}
-
-// ═══════════════════════════════════
-// 3. 순위 추이 — 기간 필터 적용
-// ═══════════════════════════════════
-function renderTrend(name){
-  if(!appData)return;
-  if(trendObj){try{trendObj.destroy();}catch(e){}}
-  var cv=document.getElementById('trendChart');if(!cv||typeof Chart==='undefined')return;
-  var c=gc();
-  var allDates=appData.trends.dates||[];
-  var allRanks=appData.trends.data[name]||[];
-  var n=Math.min(trendPeriod,allDates.length);
-  var dates=allDates.slice(-n);
-  var ranks=allRanks.slice(-n);
-  trendObj=new Chart(cv,{type:'line',data:{
-    labels:dates,
-    datasets:[{label:name,data:ranks,
-      borderColor:'rgba(3,199,90,0.85)',backgroundColor:'rgba(3,199,90,0.07)',
-      pointBackgroundColor:ranks.map(function(r){return r===null?'transparent':r===1?'#03C75A':r<=2?'#3b82f6':'rgba(3,199,90,0.8)';}),
-      pointRadius:6,pointHoverRadius:9,borderWidth:2.5,fill:true,tension:0.35,
-      spanGaps:false}]
-  },options:{responsive:true,maintainAspectRatio:false,
-    plugins:{legend:{display:false},tooltip:{enabled:true,callbacks:{label:function(ctx){return ctx.raw===null?' 순위 이탈':' 순위: '+ctx.raw+'위';}}}},
-    scales:{x:{ticks:{color:c.text},grid:{color:c.grid}},
-      y:{reverse:true,min:1,suggestedMax:7,ticks:{color:c.text,stepSize:1,callback:function(v){return v+'위';}},grid:{color:c.grid}}}}});
-}
-
-function renderReviews(d){
-  var grid=document.getElementById('reviewGrid'),noR=document.getElementById('noReview');
-  grid.innerHTML='';
-  if(!d.reviews||!d.reviews.length){noR.style.display='block';return;}
-  noR.style.display='none';
-  var sorted=d.reviews.slice().sort(function(a,b){return b.rating-a.rating;});
-  sorted.forEach(function(r){
-    var starFull=Math.floor(r.rating);
-    var stars='★'.repeat(starFull)+(r.rating-starFull>=0.5?'½':'')+'☆'.repeat(5-starFull-(r.rating-starFull>=0.5?1:0));
-    var div=document.createElement('div');div.className='rcard';
-    var urlShort=r.url.replace('https://smartstore.naver.com/','').replace('https://','');
-    div.innerHTML='<div class="rcard-name">'+r.name+'</div>'+
-      '<div class="rcard-price">'+(r.price?'₩'+r.price.toLocaleString():'—')+'</div>'+
-      '<div class="rcard-score"><span class="rcard-num">'+r.rating.toFixed(1)+'</span>'+
-      '<div class="stars-wrap"><span class="stars">'+stars+'</span>'+
-      '<span class="rcard-cnt">리뷰 '+r.count.toLocaleString()+'개</span></div></div>'+
-      (r.url?'<a class="rcard-url" href="'+r.url+'" target="_blank" rel="noopener">🔗 '+urlShort+'</a>':'');
-    grid.appendChild(div);
-  });
-}
-
-function renderRevPills(d){
-  var row=document.getElementById('revPillsRow');row.innerHTML='';
-  if(!d.reviews||!d.reviews.length)return;
-  d.reviews.forEach(function(r,i){
-    var btn=document.createElement('button');
-    btn.className='pill'+(i===0?' on':'');
-    btn.textContent=r.name.length>14?r.name.slice(0,14)+'…':r.name;
-    btn.dataset.n=r.name;
-    btn.addEventListener('click',function(){selectRevProd(r.name);});
-    row.appendChild(btn);
-  });
-  if(d.reviews.length)selectRevProd(d.reviews[0].name);
-}
-
-function selectRevProd(name){
-  selRevProd=name;
-  document.querySelectorAll('#revPillsRow .pill').forEach(function(p){p.classList.toggle('on',p.dataset.n===name);});
-  document.getElementById('ratingTrendSub').textContent=name;
-  renderRatingTrend(name);
-}
-
-// ═══════════════════════════════════
-// 2. 평점 추이 + 리뷰 증가수 — 기간 필터 적용
-// ═══════════════════════════════════
-function renderRatingTrend(name){
-  if(!appData||!appData.reviewTrends)return;
-  var trend=appData.reviewTrends.data[name];
-  var allDates=appData.reviewTrends.dates||[];
-  var c=gc();
-  var n=Math.min(revPeriod,allDates.length);
-  var dates=allDates.slice(-n);
-  var ratings=(trend?trend.ratings:[]).slice(-n);
-
-  // 2. 전날 대비 증가 리뷰수 계산
-  var rawCounts=(trend?trend.counts:[]).slice(-n);
-  var diffCounts=rawCounts.map(function(v,i){
-    if(i===0)return null; // 첫날은 비교 불가
-    var prev=rawCounts[i-1];
-    if(v===null||prev===null)return null;
-    return Math.max(0, v-prev); // 음수는 0처리 (데이터 오류 방어)
-  });
-
-  if(ratingObj){try{ratingObj.destroy();}catch(e){}}
-  var cv1=document.getElementById('ratingChart');
-  if(cv1&&trend&&typeof Chart!=='undefined'){
-    ratingObj=new Chart(cv1,{type:'line',data:{
-      labels:dates,
-      datasets:[{label:'평점',data:ratings,
-        borderColor:'#F59E0B',backgroundColor:'rgba(245,158,11,0.08)',
-        pointBackgroundColor:'#F59E0B',pointRadius:5,pointHoverRadius:8,
-        borderWidth:2.5,fill:true,tension:0.35,spanGaps:false}]
-    },options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{enabled:true,callbacks:{label:function(ctx){return ' 평점: '+ctx.raw;}}}},
-      scales:{x:{ticks:{color:c.text,font:{size:10}},grid:{color:c.grid}},
-        y:{min:1,max:5,ticks:{color:c.text,stepSize:0.5},grid:{color:c.grid},
-          title:{display:true,text:'평점',color:c.muted,font:{size:11}}}}}});
-  }
-
-  if(revCntObj){try{revCntObj.destroy();}catch(e){}}
-  var cv2=document.getElementById('reviewCountChart');
-  if(cv2&&trend&&typeof Chart!=='undefined'){
-    revCntObj=new Chart(cv2,{type:'bar',data:{
-      labels:dates,
-      datasets:[{label:'리뷰 증가수',data:diffCounts,
-        backgroundColor:'rgba(99,102,241,0.65)',borderRadius:4,borderSkipped:false}]
-    },options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{enabled:true,callbacks:{label:function(ctx){
-        return ctx.raw===null?' 데이터 없음':' +'+ctx.raw.toLocaleString()+'개 증가';
-      }}}},
-      scales:{x:{ticks:{color:c.text,font:{size:10}},grid:{color:c.grid}},
-        y:{min:0,ticks:{color:c.text},grid:{color:c.grid},
-          title:{display:true,text:'전일 대비 증가',color:c.muted,font:{size:11}}}}}});
-  }
-}
-
-function onThemeChange(){
-  if(appData){renderBarChart(appData);if(selProd)renderTrend(selProd);if(selRevProd)renderRatingTrend(selRevProd);}
-}
-
-window.addEventListener('DOMContentLoaded',load);
-</script>
-</body>
-</html>
 function toggleMenu(){var d=document.getElementById('vizMenuDropdown');if(d)d.classList.toggle('open');}
 document.addEventListener('click',function(e){if(!e.target.closest('.viz-menu')){var d=document.getElementById('vizMenuDropdown');if(d)d.classList.remove('open');}});
 var currentTheme=localStorage.getItem('viz-theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');
