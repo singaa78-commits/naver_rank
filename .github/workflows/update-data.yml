@@ -2,7 +2,7 @@ name: 데이터 업데이트 & 배포
 
 on:
   schedule:
-    - cron: '0 23 * * *'   # 매일 KST 오전 8시 (UTC 23:00)
+    - cron: '0 0 * * *'   # 매일 KST 오전 9시 (UTC 00:00 = 다음날 기준)
   workflow_dispatch:
 
 jobs:
