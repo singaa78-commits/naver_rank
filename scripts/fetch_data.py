@@ -69,11 +69,11 @@ def parse_date(s):
     return None
 
 def sort_dates(dates):
-    """날짜 문자열 리스트를 날짜 순으로 정렬"""
+    """날짜 문자열 리스트를 오름차순(과거→최근)으로 정렬"""
     def key(d):
         parsed = parse_date(d)
         return parsed if parsed else datetime.min
-    return sorted(dates, key=key)
+    return sorted(dates, key=key, reverse=False)  # reverse=False = 오름차순
 
 # ── rank_log 파싱 ─────────────────────────────────────
 def parse_rank(rows):
