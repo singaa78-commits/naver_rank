@@ -1,7 +1,9 @@
 """
 구글 시트 데이터를 가져와 public/data.json 으로 저장
+rank_log 헤더: timestamp | keyword | product_name | mall_name | rank | price | link | title
+product_re 헤더: 날짜 | product_name | url | 판매가 | 평점 | 리뷰수 | 수집시각
 """
-import json, os, time, urllib.parse, urllib.request
+import json, os, time, urllib.parse, urllib.request, re
 from datetime import datetime
 import google.auth.crypt
 import google.auth.jwt
@@ -12,6 +14,9 @@ RANK_SHEET_ID   = os.environ["RANK_SHEET_ID"]
 RANK_TAB        = os.environ.get("RANK_TAB", "rank_log")
 REVIEW_SHEET_ID = os.environ["REVIEW_SHEET_ID"]
 REVIEW_TAB      = os.environ.get("REVIEW_TAB", "product_re")
+
+# ── 자사 mall_name (순위 필터링용 — 비어있으면 전체 포함) ──
+MY_MALL = os.environ.get("MY_MALL", "가시제거연구소")
 
 def get_token():
     now = int(time.time())
@@ -54,13 +59,22 @@ def clean_num(s):
         return None
 
 def to_dt(s):
+    """다양한 날짜 형식 파싱 — '2026. 3. 28' 포함"""
     s = str(s).strip()
-    for fmt in ("%Y-%m-%d", "%Y/%m/%d", "%m/%d/%Y", "%Y.%m.%d"):
+    # 숫자만 추출해서 파싱
+    nums = re.findall(r'\d+', s)
+    if len(nums) >= 3:
+        y, m, d = int(nums[0]), int(nums[1]), int(nums[2])
         try:
-            return datetime.strptime(s, fmt)
+            return datetime(y, m, d)
         except:
             pass
     return None
+
+def normalize_date(s):
+    """날짜를 YYYY-MM-DD 표준 형식으로 변환"""
+    dt = to_dt(s)
+    return dt.strftime("%Y-%m-%d") if dt else str(s).strip()
 
 def sort_asc(date_strs):
     """날짜 문자열 리스트 → 오름차순(과거→최신) 정렬"""
@@ -79,17 +93,23 @@ def parse_rank(rows):
     hdr  = [str(h).strip() for h in rows[0]]
     data = [r for r in rows[1:] if len(r) > 1 and r[0] and r[1]]
 
-    iD = col(hdr, ["date","날짜","일자"], 0)
-    iN = col(hdr, ["product","제품","상품","name","품명"], 1)
-    iP = col(hdr, ["price","가격","자사","판매가"], 2)
-    iR = col(hdr, ["rank","순위"], 3)
-    iK = col(hdr, ["keyword","키워드"], -1)
+    print(f"  rank_log 헤더: {hdr}")
+
+    # 실제 컬럼: timestamp | keyword | product_name | mall_name | rank | price
+    iD    = col(hdr, ["timestamp","date","날짜","일자"], 0)
+    iK    = col(hdr, ["keyword","키워드"], 1)
+    iN    = col(hdr, ["product_name","product","제품","상품","name","품명"], 2)
+    iMall = col(hdr, ["mall_name","mall","쇼핑몰","판매처"], 3)
+    iR    = col(hdr, ["rank","순위"], 4)
+    iP    = col(hdr, ["price","가격","자사","판매가"], 5)
 
     def get(r, i):
         return str(r[i]).strip() if 0 <= i < len(r) else ""
 
-    # 오름차순 정렬 (과거 → 최신)
-    all_dates = sort_asc(list(set(get(r, iD) for r in data if get(r, iD))))
+    # 날짜 정규화 후 오름차순 정렬
+    def norm(r): return normalize_date(get(r, iD))
+
+    all_dates = sort_asc(list(set(norm(r) for r in data if norm(r))))
 
     today     = all_dates[-1] if all_dates else "—"
     yesterday = all_dates[-2] if len(all_dates) > 1 else today
@@ -97,39 +117,51 @@ def parse_rank(rows):
     print(f"  rank 날짜 마지막 5개: {all_dates[-5:]}")
     print(f"  오늘={today}, 어제={yesterday}")
 
-    today_rows = [r for r in data if get(r, iD) == today]
-    yest_map   = {get(r, iN): r for r in data if get(r, iD) == yesterday}
+    # 자사 제품만 필터 (mall_name이 MY_MALL인 행)
+    def is_mine(r):
+        if not MY_MALL:
+            return True
+        mall = get(r, iMall)
+        return MY_MALL in mall or mall == ""
+
+    today_rows = [r for r in data if normalize_date(get(r, iD)) == today and is_mine(r)]
+    yest_rows  = [r for r in data if normalize_date(get(r, iD)) == yesterday and is_mine(r)]
+    yest_map   = {get(r, iN): r for r in yest_rows}
+
+    print(f"  오늘 자사 행: {len(today_rows)}개")
 
     products = []
     for r in today_rows:
         name      = get(r, iN)
         raw_rank  = get(r, iR)
+        # rank가 '미노출' 등 숫자가 아니면 None
         rank      = int(raw_rank) if raw_rank.isdigit() else None
         prev      = yest_map.get(name)
         prev_raw  = get(prev, iR) if prev else ""
         prev_rank = int(prev_raw) if prev_raw.isdigit() else None
         price_str = get(r, iP).replace(",","").replace("₩","")
         price     = int(price_str) if price_str.isdigit() else 0
+        keyword   = get(r, iK)
         products.append({
             "name":     name,
             "myPrice":  price,
             "rank":     rank,
             "prevRank": prev_rank,
-            "keyword":  get(r, iK) if iK >= 0 else "",
+            "keyword":  keyword,
         })
 
-    # 추이: 최근 90일 — 날짜·데이터 1:1 정렬 유지
-    trend_dates = all_dates[-90:]  # 오름차순 유지
+    # 추이: 최근 90일
+    trend_dates = all_dates[-90:]
+    names = list(dict.fromkeys(get(r, iN) for r in data if is_mine(r) and get(r, iN)))
 
     dm = {}
     for r in data:
-        k = (get(r, iD), get(r, iN))
+        if not is_mine(r): continue
+        k   = (normalize_date(get(r, iD)), get(r, iN))
         raw = get(r, iR)
         dm[k] = int(raw) if raw.isdigit() else None
 
-    names = list(dict.fromkeys(get(r, iN) for r in data if get(r, iN)))
-    used  = [d for d in trend_dates if any(dm.get((d, n)) is not None for n in names)]
-
+    used = [d for d in trend_dates if any(dm.get((d, n)) is not None for n in names)]
     trend_data = {name: [dm.get((d, name)) for d in used] for name in names}
 
     return {
@@ -146,7 +178,9 @@ def parse_reviews(rows):
     hdr  = [str(h).strip() for h in rows[0]]
     data = [r for r in rows[1:] if len(r) > 1 and r[0] and r[1]]
 
-    iD   = col(hdr, ["date","날짜"], 0)
+    print(f"  product_re 헤더: {hdr}")
+
+    iD   = col(hdr, ["date","날짜","timestamp"], 0)
     iN   = col(hdr, ["product_name","product","제품","name"], 1)
     iURL = col(hdr, ["url","링크"], 2)
     iP   = col(hdr, ["판매가","price","가격"], 3)
@@ -155,14 +189,15 @@ def parse_reviews(rows):
 
     def get(r, i):
         return str(r[i]).strip() if 0 <= i < len(r) else ""
+    def norm(r): return normalize_date(get(r, iD))
 
-    all_dates = sort_asc(list(set(get(r, iD) for r in data if get(r, iD))))
+    all_dates = sort_asc(list(set(norm(r) for r in data if norm(r))))
     latest    = all_dates[-1] if all_dates else ""
 
     print(f"  review 날짜 마지막 5개: {all_dates[-5:]}")
 
     result_latest = []
-    for r in [x for x in data if get(x, iD) == latest]:
+    for r in [x for x in data if norm(x) == latest]:
         price = clean_num(get(r, iP))
         rat   = clean_num(get(r, iRat))
         cnt   = clean_num(get(r, iCnt))
@@ -180,14 +215,13 @@ def parse_reviews(rows):
 
     rm = {}
     for r in data:
-        k = (get(r, iD), get(r, iN))
+        k = (norm(r), get(r, iN))
         rm[k] = {
             "rating": clean_num(get(r, iRat)) or 0,
             "count":  int(clean_num(get(r, iCnt)) or 0),
         }
 
     used = [d for d in trend_dates if any((d, n) in rm for n in names)]
-
     trend_data = {}
     for name in names:
         trend_data[name] = {
@@ -226,7 +260,7 @@ def main():
     with open("public/data.json", "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, indent=2)
 
-    print(f"✅ data.json 저장 — 제품 {len(rank_data['products'])}개, 리뷰 {len(rev_data['latest'])}개")
+    print(f"✅ 저장 완료 — 제품 {len(rank_data['products'])}개, 리뷰 {len(rev_data['latest'])}개")
 
 if __name__ == "__main__":
     main()
