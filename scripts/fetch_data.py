@@ -1,13 +1,11 @@
 """
 구글 시트 데이터를 가져와 public/data.json 으로 저장
-GitHub Actions에서 환경변수로 서비스 계정 정보를 받음
 """
 import json, os, time, urllib.parse, urllib.request
 from datetime import datetime
 import google.auth.crypt
 import google.auth.jwt
 
-# ── 환경변수에서 설정 읽기 ──────────────────────────
 CLIENT_EMAIL    = os.environ["SERVICE_ACCOUNT_EMAIL"]
 PRIVATE_KEY     = os.environ["SERVICE_ACCOUNT_KEY"].replace("\\n", "\n")
 RANK_SHEET_ID   = os.environ["RANK_SHEET_ID"]
@@ -15,7 +13,6 @@ RANK_TAB        = os.environ.get("RANK_TAB", "rank_log")
 REVIEW_SHEET_ID = os.environ["REVIEW_SHEET_ID"]
 REVIEW_TAB      = os.environ.get("REVIEW_TAB", "product_re")
 
-# ── JWT 토큰 발급 ────────────────────────────────────
 def get_token():
     now = int(time.time())
     payload = {
@@ -38,14 +35,12 @@ def get_token():
     with urllib.request.urlopen(req) as resp:
         return json.loads(resp.read())["access_token"]
 
-# ── 시트 데이터 가져오기 ─────────────────────────────
 def fetch_sheet(token, sheet_id, tab):
     url = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/{urllib.parse.quote(tab)}"
     req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
     with urllib.request.urlopen(req) as resp:
         return json.loads(resp.read()).get("values", [])
 
-# ── 헤더 자동 감지 ───────────────────────────────────
 def col(hdr, keys, fallback):
     for i, h in enumerate(hdr):
         if any(k in h.lower() for k in keys):
@@ -58,8 +53,7 @@ def clean_num(s):
     except:
         return None
 
-# ── 날짜 파싱 (다양한 형식 지원) ─────────────────────
-def parse_date(s):
+def to_dt(s):
     s = str(s).strip()
     for fmt in ("%Y-%m-%d", "%Y/%m/%d", "%m/%d/%Y", "%Y.%m.%d"):
         try:
@@ -68,17 +62,19 @@ def parse_date(s):
             pass
     return None
 
-def sort_dates(dates):
-    """날짜 문자열 리스트를 오름차순(과거→최근)으로 정렬"""
-    def key(d):
-        parsed = parse_date(d)
-        return parsed if parsed else datetime.min
-    return sorted(dates, key=key, reverse=False)  # reverse=False = 오름차순
+def sort_asc(date_strs):
+    """날짜 문자열 리스트 → 오름차순(과거→최신) 정렬"""
+    pairs = [(to_dt(d), d) for d in date_strs if to_dt(d)]
+    pairs.sort(key=lambda x: x[0])
+    return [p[1] for p in pairs]
 
-# ── rank_log 파싱 ─────────────────────────────────────
+def label(d):
+    dt = to_dt(d)
+    return f"{dt.month}.{dt.day}" if dt else d
+
 def parse_rank(rows):
     if len(rows) < 2:
-        return {"products": [], "trends": {"dates": [], "data": {}}}
+        return {"today":"—","yesterday":"—","products":[],"trends":{"dates":[],"data":{}}}
 
     hdr  = [str(h).strip() for h in rows[0]]
     data = [r for r in rows[1:] if len(r) > 1 and r[0] and r[1]]
@@ -89,30 +85,30 @@ def parse_rank(rows):
     iR = col(hdr, ["rank","순위"], 3)
     iK = col(hdr, ["keyword","키워드"], -1)
 
-    def get(r, i): return str(r[i]).strip() if i >= 0 and i < len(r) else ""
+    def get(r, i):
+        return str(r[i]).strip() if 0 <= i < len(r) else ""
 
-    # 날짜를 날짜 객체 기준으로 정렬
-    raw_dates = list(set(get(r, iD) for r in data if get(r, iD)))
-    all_dates = sort_dates(raw_dates)
+    # 오름차순 정렬 (과거 → 최신)
+    all_dates = sort_asc(list(set(get(r, iD) for r in data if get(r, iD))))
 
-    today     = all_dates[-1] if all_dates else ""
+    today     = all_dates[-1] if all_dates else "—"
     yesterday = all_dates[-2] if len(all_dates) > 1 else today
 
-    print(f"  전체 날짜: {all_dates[-5:]} (최근 5개)")
-    print(f"  오늘: {today}, 어제: {yesterday}")
+    print(f"  rank 날짜 마지막 5개: {all_dates[-5:]}")
+    print(f"  오늘={today}, 어제={yesterday}")
 
     today_rows = [r for r in data if get(r, iD) == today]
-    yest_rows  = {get(r, iN): r for r in data if get(r, iD) == yesterday}
+    yest_map   = {get(r, iN): r for r in data if get(r, iD) == yesterday}
 
     products = []
     for r in today_rows:
         name      = get(r, iN)
         raw_rank  = get(r, iR)
         rank      = int(raw_rank) if raw_rank.isdigit() else None
-        prev_r    = yest_rows.get(name)
-        prev_raw  = get(prev_r, iR) if prev_r else ""
+        prev      = yest_map.get(name)
+        prev_raw  = get(prev, iR) if prev else ""
         prev_rank = int(prev_raw) if prev_raw.isdigit() else None
-        price_str = get(r, iP).replace(",", "").replace("₩", "")
+        price_str = get(r, iP).replace(",","").replace("₩","")
         price     = int(price_str) if price_str.isdigit() else 0
         products.append({
             "name":     name,
@@ -122,41 +118,30 @@ def parse_rank(rows):
             "keyword":  get(r, iK) if iK >= 0 else "",
         })
 
-    # 추이: 최근 90일 (날짜 정렬 적용)
-    trend_dates = all_dates[-90:]
-    names = list(dict.fromkeys(get(r, iN) for r in data if get(r, iN)))
-    date_name_map = {}
+    # 추이: 최근 90일 — 날짜·데이터 1:1 정렬 유지
+    trend_dates = all_dates[-90:]  # 오름차순 유지
+
+    dm = {}
     for r in data:
-        key = (get(r, iD), get(r, iN))
+        k = (get(r, iD), get(r, iN))
         raw = get(r, iR)
-        date_name_map[key] = int(raw) if raw.isdigit() else None
+        dm[k] = int(raw) if raw.isdigit() else None
 
-    trend_data = {}
-    for name in names:
-        pts = [date_name_map.get((d, name)) for d in trend_dates]
-        trend_data[name] = [v for v in pts if v is not None]
+    names = list(dict.fromkeys(get(r, iN) for r in data if get(r, iN)))
+    used  = [d for d in trend_dates if any(dm.get((d, n)) is not None for n in names)]
 
-    used_dates = [d for d in trend_dates
-                  if any(date_name_map.get((d, n)) is not None for n in names)]
-
-    # 날짜 표시: MM-DD 형식으로 통일
-    def fmt_date(d):
-        parsed = parse_date(d)
-        return parsed.strftime("%-m.%-d") if parsed else d
-
-    short_dates = [fmt_date(d) for d in used_dates]
+    trend_data = {name: [dm.get((d, name)) for d in used] for name in names}
 
     return {
         "today":     today,
         "yesterday": yesterday,
         "products":  products,
-        "trends":    {"dates": short_dates, "data": trend_data},
+        "trends":    {"dates": [label(d) for d in used], "data": trend_data},
     }
 
-# ── product_re 파싱 ────────────────────────────────────
 def parse_reviews(rows):
     if len(rows) < 2:
-        return {"latest": [], "trends": {"dates": [], "data": {}}}
+        return {"latest":[],"trends":{"dates":[],"data":{}}}
 
     hdr  = [str(h).strip() for h in rows[0]]
     data = [r for r in rows[1:] if len(r) > 1 and r[0] and r[1]]
@@ -168,15 +153,16 @@ def parse_reviews(rows):
     iRat = col(hdr, ["평점","rating","score"], 4)
     iCnt = col(hdr, ["리뷰수","review","count"], 5)
 
-    def get(r, i): return str(r[i]).strip() if i >= 0 and i < len(r) else ""
+    def get(r, i):
+        return str(r[i]).strip() if 0 <= i < len(r) else ""
 
-    raw_dates = list(set(get(r, iD) for r in data if get(r, iD)))
-    all_dates = sort_dates(raw_dates)
+    all_dates = sort_asc(list(set(get(r, iD) for r in data if get(r, iD))))
     latest    = all_dates[-1] if all_dates else ""
 
-    latest_rows = [r for r in data if get(r, iD) == latest]
+    print(f"  review 날짜 마지막 5개: {all_dates[-5:]}")
+
     result_latest = []
-    for r in latest_rows:
+    for r in [x for x in data if get(x, iD) == latest]:
         price = clean_num(get(r, iP))
         rat   = clean_num(get(r, iRat))
         cnt   = clean_num(get(r, iCnt))
@@ -189,66 +175,58 @@ def parse_reviews(rows):
             "date":   latest,
         })
 
-    # 평점·리뷰수 추이 (최근 90일, 날짜 정렬)
     trend_dates = all_dates[-90:]
     names = list(dict.fromkeys(get(r, iN) for r in data if get(r, iN)))
-    rev_map = {}
+
+    rm = {}
     for r in data:
-        key = (get(r, iD), get(r, iN))
-        rev_map[key] = {
+        k = (get(r, iD), get(r, iN))
+        rm[k] = {
             "rating": clean_num(get(r, iRat)) or 0,
             "count":  int(clean_num(get(r, iCnt)) or 0),
         }
 
+    used = [d for d in trend_dates if any((d, n) in rm for n in names)]
+
     trend_data = {}
     for name in names:
-        ratings = [rev_map[(d, name)]["rating"] for d in trend_dates if (d, name) in rev_map]
-        counts  = [rev_map[(d, name)]["count"]  for d in trend_dates if (d, name) in rev_map]
-        trend_data[name] = {"ratings": ratings, "counts": counts}
-
-    used_dates = [d for d in trend_dates if any((d, n) in rev_map for n in names)]
-
-    def fmt_date(d):
-        parsed = parse_date(d)
-        return parsed.strftime("%-m.%-d") if parsed else d
-
-    short_dates = [fmt_date(d) for d in used_dates]
+        trend_data[name] = {
+            "ratings": [rm[(d,name)]["rating"] if (d,name) in rm else None for d in used],
+            "counts":  [rm[(d,name)]["count"]  if (d,name) in rm else None for d in used],
+        }
 
     return {
-        "latest": result_latest,
-        "trends": {"dates": short_dates, "data": trend_data},
+        "latest":  result_latest,
+        "trends":  {"dates": [label(d) for d in used], "data": trend_data},
     }
 
-# ── 메인 ────────────────────────────────────────────────
 def main():
     print("토큰 발급 중…")
     token = get_token()
-    print("✅ 토큰 발급 완료")
+    print("✅ 완료")
 
-    print(f"rank_log 시트 로드 중… ({RANK_SHEET_ID}/{RANK_TAB})")
+    print("rank_log 로드…")
     rank_rows = fetch_sheet(token, RANK_SHEET_ID, RANK_TAB)
-    print(f"  → {len(rank_rows)}행")
+    print(f"  {len(rank_rows)}행")
 
-    print(f"product_re 시트 로드 중… ({REVIEW_SHEET_ID}/{REVIEW_TAB})")
-    review_rows = fetch_sheet(token, REVIEW_SHEET_ID, REVIEW_TAB)
-    print(f"  → {len(review_rows)}행")
+    print("product_re 로드…")
+    rev_rows = fetch_sheet(token, REVIEW_SHEET_ID, REVIEW_TAB)
+    print(f"  {len(rev_rows)}행")
 
-    rank_data   = parse_rank(rank_rows)
-    review_data = parse_reviews(review_rows)
+    rank_data = parse_rank(rank_rows)
+    rev_data  = parse_reviews(rev_rows)
 
     output = {
         "updatedAt": time.strftime("%Y-%m-%d %H:%M UTC"),
         "rank":   rank_data,
-        "review": review_data,
+        "review": rev_data,
     }
 
     os.makedirs("public", exist_ok=True)
     with open("public/data.json", "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, indent=2)
 
-    print(f"✅ public/data.json 저장 완료")
-    print(f"   제품: {len(rank_data['products'])}개")
-    print(f"   리뷰: {len(review_data['latest'])}개")
+    print(f"✅ data.json 저장 — 제품 {len(rank_data['products'])}개, 리뷰 {len(rev_data['latest'])}개")
 
 if __name__ == "__main__":
     main()
