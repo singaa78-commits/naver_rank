@@ -3,16 +3,17 @@
 GitHub Actions에서 환경변수로 서비스 계정 정보를 받음
 """
 import json, os, time, urllib.parse, urllib.request
+from datetime import datetime
 import google.auth.crypt
 import google.auth.jwt
 
 # ── 환경변수에서 설정 읽기 ──────────────────────────
-CLIENT_EMAIL  = os.environ["SERVICE_ACCOUNT_EMAIL"]
-PRIVATE_KEY   = os.environ["SERVICE_ACCOUNT_KEY"].replace("\\n", "\n")
-RANK_SHEET_ID = os.environ["RANK_SHEET_ID"]
-RANK_TAB      = os.environ.get("RANK_TAB", "rank_log")
+CLIENT_EMAIL    = os.environ["SERVICE_ACCOUNT_EMAIL"]
+PRIVATE_KEY     = os.environ["SERVICE_ACCOUNT_KEY"].replace("\\n", "\n")
+RANK_SHEET_ID   = os.environ["RANK_SHEET_ID"]
+RANK_TAB        = os.environ.get("RANK_TAB", "rank_log")
 REVIEW_SHEET_ID = os.environ["REVIEW_SHEET_ID"]
-REVIEW_TAB    = os.environ.get("REVIEW_TAB", "product_re")
+REVIEW_TAB      = os.environ.get("REVIEW_TAB", "product_re")
 
 # ── JWT 토큰 발급 ────────────────────────────────────
 def get_token():
@@ -57,6 +58,23 @@ def clean_num(s):
     except:
         return None
 
+# ── 날짜 파싱 (다양한 형식 지원) ─────────────────────
+def parse_date(s):
+    s = str(s).strip()
+    for fmt in ("%Y-%m-%d", "%Y/%m/%d", "%m/%d/%Y", "%Y.%m.%d"):
+        try:
+            return datetime.strptime(s, fmt)
+        except:
+            pass
+    return None
+
+def sort_dates(dates):
+    """날짜 문자열 리스트를 날짜 순으로 정렬"""
+    def key(d):
+        parsed = parse_date(d)
+        return parsed if parsed else datetime.min
+    return sorted(dates, key=key)
+
 # ── rank_log 파싱 ─────────────────────────────────────
 def parse_rank(rows):
     if len(rows) < 2:
@@ -73,23 +91,29 @@ def parse_rank(rows):
 
     def get(r, i): return str(r[i]).strip() if i >= 0 and i < len(r) else ""
 
-    all_dates = sorted(set(get(r, iD) for r in data if get(r, iD)))
+    # 날짜를 날짜 객체 기준으로 정렬
+    raw_dates = list(set(get(r, iD) for r in data if get(r, iD)))
+    all_dates = sort_dates(raw_dates)
+
     today     = all_dates[-1] if all_dates else ""
     yesterday = all_dates[-2] if len(all_dates) > 1 else today
+
+    print(f"  전체 날짜: {all_dates[-5:]} (최근 5개)")
+    print(f"  오늘: {today}, 어제: {yesterday}")
 
     today_rows = [r for r in data if get(r, iD) == today]
     yest_rows  = {get(r, iN): r for r in data if get(r, iD) == yesterday}
 
     products = []
     for r in today_rows:
-        name     = get(r, iN)
-        raw_rank = get(r, iR)
-        rank     = int(raw_rank) if raw_rank.isdigit() else None
-        prev_r   = yest_rows.get(name)
-        prev_raw = get(prev_r, iR) if prev_r else ""
+        name      = get(r, iN)
+        raw_rank  = get(r, iR)
+        rank      = int(raw_rank) if raw_rank.isdigit() else None
+        prev_r    = yest_rows.get(name)
+        prev_raw  = get(prev_r, iR) if prev_r else ""
         prev_rank = int(prev_raw) if prev_raw.isdigit() else None
         price_str = get(r, iP).replace(",", "").replace("₩", "")
-        price = int(price_str) if price_str.isdigit() else 0
+        price     = int(price_str) if price_str.isdigit() else 0
         products.append({
             "name":     name,
             "myPrice":  price,
@@ -98,8 +122,8 @@ def parse_rank(rows):
             "keyword":  get(r, iK) if iK >= 0 else "",
         })
 
-    # 추이 (최근 30일)
-    trend_dates = all_dates[-30:]
+    # 추이: 최근 90일 (날짜 정렬 적용)
+    trend_dates = all_dates[-90:]
     names = list(dict.fromkeys(get(r, iN) for r in data if get(r, iN)))
     date_name_map = {}
     for r in data:
@@ -114,7 +138,13 @@ def parse_rank(rows):
 
     used_dates = [d for d in trend_dates
                   if any(date_name_map.get((d, n)) is not None for n in names)]
-    short_dates = [d[5:] if len(d) >= 8 else d for d in used_dates]
+
+    # 날짜 표시: MM-DD 형식으로 통일
+    def fmt_date(d):
+        parsed = parse_date(d)
+        return parsed.strftime("%-m.%-d") if parsed else d
+
+    short_dates = [fmt_date(d) for d in used_dates]
 
     return {
         "today":     today,
@@ -140,7 +170,8 @@ def parse_reviews(rows):
 
     def get(r, i): return str(r[i]).strip() if i >= 0 and i < len(r) else ""
 
-    all_dates = sorted(set(get(r, iD) for r in data if get(r, iD)))
+    raw_dates = list(set(get(r, iD) for r in data if get(r, iD)))
+    all_dates = sort_dates(raw_dates)
     latest    = all_dates[-1] if all_dates else ""
 
     latest_rows = [r for r in data if get(r, iD) == latest]
@@ -158,8 +189,8 @@ def parse_reviews(rows):
             "date":   latest,
         })
 
-    # 평점·리뷰수 추이
-    trend_dates = all_dates[-30:]
+    # 평점·리뷰수 추이 (최근 90일, 날짜 정렬)
+    trend_dates = all_dates[-90:]
     names = list(dict.fromkeys(get(r, iN) for r in data if get(r, iN)))
     rev_map = {}
     for r in data:
@@ -176,7 +207,12 @@ def parse_reviews(rows):
         trend_data[name] = {"ratings": ratings, "counts": counts}
 
     used_dates = [d for d in trend_dates if any((d, n) in rev_map for n in names)]
-    short_dates = [d[5:] if len(d) >= 8 else d for d in used_dates]
+
+    def fmt_date(d):
+        parsed = parse_date(d)
+        return parsed.strftime("%-m.%-d") if parsed else d
+
+    short_dates = [fmt_date(d) for d in used_dates]
 
     return {
         "latest": result_latest,
