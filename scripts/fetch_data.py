@@ -117,12 +117,10 @@ def parse_rank(rows):
     print(f"  rank 날짜 마지막 5개: {all_dates[-5:]}")
     print(f"  오늘={today}, 어제={yesterday}")
 
-    # 자사 제품만 필터 (mall_name이 MY_MALL인 행)
+    # 자사 제품 필터 (가시제거연구소 또는 네이버 카탈로그)
     def is_mine(r):
-        if not MY_MALL:
-            return True
         mall = get(r, iMall)
-        return MY_MALL in mall or mall == ""
+        return MY_MALL in mall or "네이버" in mall or mall == ""
 
     today_rows = [r for r in data if normalize_date(get(r, iD)) == today and is_mine(r)]
     yest_rows  = [r for r in data if normalize_date(get(r, iD)) == yesterday and is_mine(r)]
