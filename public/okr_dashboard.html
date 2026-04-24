@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OKR 대시보드</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Pretendard', -apple-system, sans-serif; background: #f8f7f4; color: #1a1a1a; min-height: 100vh; padding: 2rem 1.5rem; }
+  h1 { font-size: 13px; font-weight: 500; color: #888; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .obj-title { font-size: 20px; font-weight: 600; color: #1a1a1a; line-height: 1.4; margin-bottom: 1.5rem; }
+  .summary-bar { display: flex; align-items: center; gap: 20px; background: #fff; border: 0.5px solid #e0ddd6; border-radius: 14px; padding: 1.1rem 1.4rem; margin-bottom: 1.5rem; }
+  .sum-label { font-size: 12px; color: #888; margin-bottom: 3px; }
+  .sum-val { font-size: 26px; font-weight: 600; color: #1a1a1a; }
+  .sum-sub { font-size: 12px; color: #aaa; margin-top: 2px; }
+  .sum-divider { width: 1px; height: 44px; background: #e8e5e0; }
+  .sum-progress { flex: 1; }
+  .sum-bar-bg { height: 8px; background: #f0ede8; border-radius: 99px; overflow: hidden; margin-top: 6px; }
+  .sum-bar-fill { height: 100%; border-radius: 99px; background: #1D9E75; transition: width 0.5s ease; }
+  .kr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 12px; }
+  .kr-card { background: #fff; border: 0.5px solid #e0ddd6; border-radius: 14px; padding: 1.2rem 1.4rem; }
+  .kr-card.wide { grid-column: 1 / -1; }
+  .kr-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+  .kr-label { font-size: 11px; font-weight: 600; color: #aaa; letter-spacing: 0.06em; }
+  .kr-pct { font-size: 22px; font-weight: 600; }
+  .kr-desc { font-size: 13px; color: #444; margin-bottom: 12px; }
+  .kr-nums { display: flex; justify-content: space-between; font-size: 12px; color: #999; margin-bottom: 6px; }
+  .kr-bar-bg { height: 5px; background: #f0ede8; border-radius: 99px; overflow: hidden; }
+  .kr-bar-fill { height: 100%; border-radius: 99px; transition: width 0.5s ease; }
+  .kr-input-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+  .kr-input-row label { font-size: 12px; color: #aaa; white-space: nowrap; }
+  .kr-input-row input { flex: 1; height: 32px; font-size: 13px; padding: 0 10px; border: 0.5px solid #ddd; border-radius: 8px; background: #faf9f7; color: #1a1a1a; min-width: 0; outline: none; }
+  .kr-input-row input:focus { border-color: #bbb; }
+  .ch-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 12px; }
+  .ch-card { background: #faf9f7; border-radius: 10px; padding: 10px 12px; border: 0.5px solid transparent; transition: border-color 0.2s; }
+  .ch-card.best { border-color: #1D9E75; background: #f0faf6; }
+  .ch-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .ch-name-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+  .ch-name-inp { font-size: 12px; font-weight: 600; color: #333; border: none; background: transparent; width: 100%; padding: 0; outline: none; }
+  .ch-val-inp { font-size: 20px; font-weight: 600; color: #1a1a1a; border: none; background: transparent; width: 100%; padding: 0; outline: none; }
+  .ch-val-inp::placeholder { font-size: 14px; color: #ccc; font-weight: 400; }
+  .ch-unit { font-size: 11px; color: #bbb; margin-top: 1px; }
+  .best-badge { font-size: 10px; font-weight: 600; background: #d4f5e9; color: #0a6e47; border-radius: 6px; padding: 2px 6px; display: none; margin-top: 5px; }
+  .save-btn { display: flex; align-items: center; gap: 6px; margin-top: 1.5rem; padding: 10px 20px; background: #1a1a1a; color: #fff; border: none; border-radius: 10px; font-size: 13px; font-weight: 500; cursor: pointer; transition: opacity 0.2s; }
+  .save-btn:hover { opacity: 0.8; }
+  .save-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .status-msg { font-size: 12px; color: #888; margin-top: 8px; min-height: 18px; }
+  .status-msg.ok { color: #1D9E75; }
+  .status-msg.err { color: #E24B4A; }
+  .last-updated { font-size: 11px; color: #bbb; margin-top: 2px; }
+  .loading-overlay { position: fixed; inset: 0; background: rgba(248,247,244,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; z-index: 100; }
+  .loading-spinner { width: 28px; height: 28px; border: 2px solid #e0ddd6; border-top-color: #1a1a1a; border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 13px; color: #888; }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">시트에서 데이터 불러오는 중...</div>
+</div>
+
+<h1>OBJECTIVE</h1>
+<div class="obj-title">콘텐츠를 연료로 매출을 만드는<br>그로스 엔진이 된다</div>
+
+<div class="summary-bar">
+  <div>
+    <div class="sum-label">전체 달성률</div>
+    <div class="sum-val" id="totalPct">—</div>
+    <div class="sum-sub" id="totalFilled">불러오는 중...</div>
+  </div>
+  <div class="sum-divider"></div>
+  <div class="sum-progress">
+    <div class="sum-label">KR 평균 진행률</div>
+    <div class="sum-bar-bg"><div class="sum-bar-fill" id="sumBarFill" style="width:0%"></div></div>
+  </div>
+  <div id="lastUpdatedWrap" style="text-align:right">
+    <div class="sum-label">마지막 데이터</div>
+    <div class="last-updated" id="lastDate">—</div>
+  </div>
+</div>
+
+<div class="kr-grid" id="krGrid"></div>
+
+<div style="margin-top:1.5rem; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+  <button class="save-btn" id="saveBtn" onclick="saveToSheet()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+    오늘 수치 저장
+  </button>
+  <div class="status-msg" id="statusMsg"></div>
+</div>
+
+<script>
+const SHEET_ID = '1Y0L5tn_fIRhnYhLM0730EitBTwAkvIoosPtB8T4aPq8';
+const SHEET_TAB = 'OKR';
+
+/* ── 서비스 계정 키 ── */
+/* 아래 SERVICE_ACCOUNT_JSON 에 서비스 계정 JSON 키를 붙여넣으세요 */
+const SERVICE_ACCOUNT_JSON = {
+  "type": "service_account",
+  "project_id": "YOUR_PROJECT_ID",
+  "private_key_id": "YOUR_KEY_ID",
+  "private_key": "-----BEGIN RSA PRIVATE KEY-----\nYOUR_PRIVATE_KEY\n-----END RSA PRIVATE KEY-----\n",
+  "client_email": "sheet-reader@cafe24-dashboard.iam.gserviceaccount.com",
+  "token_uri": "https://oauth2.googleapis.com/token"
+};
+
+/* ── KR 정의 ── */
+const krs = [
+  { id:'kr1', label:'KR 1', desc:'SNS 전환 매출', target:10000000, format:v=>(v/10000).toFixed(0)+'만원', ph:'예: 3000000', lbl:'현재 매출 (원)', parse:v=>parseFloat(String(v).replace(/,/g,''))||0 },
+  { id:'kr2', label:'KR 2', desc:'기존 인스타 팔로워', target:70000, format:v=>(v/10000).toFixed(1)+'만', ph:'예: 52000', lbl:'현재 팔로워', parse:v=>parseFloat(String(v).replace(/,/g,''))||0 },
+  { id:'kr4', label:'KR 4', desc:'Meta 광고 ROAS', target:700, format:v=>v+'%', ph:'예: 420', lbl:'현재 ROAS (%)', parse:v=>parseFloat(v)||0 },
+  { id:'kr5', label:'KR 5', desc:'Meta CVR', target:10, format:v=>parseFloat(v).toFixed(1)+'%', ph:'예: 4.5', lbl:'현재 CVR (%)', parse:v=>parseFloat(v)||0 },
+];
+const chColors = ['#7F77DD','#1D9E75','#378ADD','#D4537E','#BA7517'];
+const channels = [
+  { id:'kr3_싹그로스', name:'싹그로스', val:0 },
+  { id:'kr3_노예스', name:'노예스', val:0 },
+  { id:'kr3_영도남자', name:'영도남자', val:0 },
+  { id:'kr3_원팬', name:'원팬', val:0 },
+  { id:'kr3_채널5', name:'채널 5', val:0 },
+];
+const state = {};
+krs.forEach(k => state[k.id] = 0);
+
+/* ── JWT / 토큰 ── */
+let cachedToken = null;
+let tokenExpiry = 0;
+
+async function getAccessToken() {
+  if (cachedToken && Date.now() < tokenExpiry - 60000) return cachedToken;
+  const key = SERVICE_ACCOUNT_JSON;
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: 'RS256', typ: 'JWT' };
+  const payload = {
+    iss: key.client_email,
+    scope: 'https://www.googleapis.com/auth/spreadsheets',
+    aud: key.token_uri,
+    exp: now + 3600,
+    iat: now
+  };
+  const b64 = s => btoa(unescape(encodeURIComponent(JSON.stringify(s)))).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+  const sigInput = b64(header) + '.' + b64(payload);
+
+  const pemBody = key.private_key.replace(/-----[^-]+-----/g,'').replace(/\s/g,'');
+  const binaryKey = Uint8Array.from(atob(pemBody), c => c.charCodeAt(0));
+  const cryptoKey = await crypto.subtle.importKey('pkcs8', binaryKey, { name:'RSASSA-PKCS1-v1_5', hash:'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', cryptoKey, new TextEncoder().encode(sigInput));
+  const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sig))).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+  const jwt = sigInput + '.' + sigB64;
+
+  const res = await fetch(key.token_uri, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`
+  });
+  const data = await res.json();
+  cachedToken = data.access_token;
+  tokenExpiry = Date.now() + (data.expires_in * 1000);
+  return cachedToken;
+}
+
+/* ── 시트 읽기 ── */
+async function loadFromSheet() {
+  try {
+    const token = await getAccessToken();
+    const range = encodeURIComponent(`${SHEET_TAB}!A:J`);
+    const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    const rows = data.values || [];
+    if (rows.length < 2) { hideLoading(); return; }
+
+    const headers = rows[0]; // date, kr1, kr2, kr3_싹그로스, kr3_노예스, kr3_영도남자, kr3_원팬, kr3_채널5, kr4, kr5
+    const colMap = {};
+    headers.forEach((h, i) => colMap[h.trim()] = i);
+
+    // 값이 있는 마지막 행 찾기 (각 컬럼별 최신값)
+    const latest = {};
+    let latestDate = '';
+    for (let r = 1; r < rows.length; r++) {
+      const row = rows[r];
+      const date = row[0] || '';
+      headers.forEach((h, i) => {
+        if (h === 'date') return;
+        const val = row[i];
+        if (val !== undefined && val !== '') {
+          latest[h] = parseFloat(val) || 0;
+          if (date > latestDate) latestDate = date;
+        }
+      });
+    }
+
+    // 상태에 반영
+    krs.forEach(kr => { if (latest[kr.id] !== undefined) state[kr.id] = latest[kr.id]; });
+    channels.forEach(ch => { if (latest[ch.id] !== undefined) ch.val = latest[ch.id]; });
+
+    document.getElementById('lastDate').textContent = latestDate || '—';
+    render();
+    hideLoading();
+  } catch(e) {
+    console.error(e);
+    setStatus('시트 불러오기 실패: ' + e.message, 'err');
+    hideLoading();
+    render();
+  }
+}
+
+/* ── 시트 쓰기 ── */
+async function saveToSheet() {
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true;
+  setStatus('저장 중...', '');
+
+  try {
+    const token = await getAccessToken();
+    const today = new Date().toISOString().slice(0,10);
+
+    // 기존 데이터에서 오늘 날짜 행 위치 찾기
+    const range = encodeURIComponent(`${SHEET_TAB}!A:A`);
+    const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    const rows = data.values || [];
+    let rowIndex = -1;
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i][0] === today) { rowIndex = i + 1; break; }
+    }
+    if (rowIndex === -1) rowIndex = rows.length + 1;
+
+    // 헤더 순서: date, kr1, kr2, kr3_싹그로스, kr3_노예스, kr3_영도남자, kr3_원팬, kr3_채널5, kr4, kr5
+    const rowData = [
+      today,
+      state['kr1'] || '',
+      state['kr2'] || '',
+      channels[0].val || '',
+      channels[1].val || '',
+      channels[2].val || '',
+      channels[3].val || '',
+      channels[4].val || '',
+      state['kr4'] || '',
+      state['kr5'] || '',
+    ];
+
+    const writeRange = encodeURIComponent(`${SHEET_TAB}!A${rowIndex}:J${rowIndex}`);
+    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${writeRange}?valueInputOption=RAW`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values: [rowData] })
+    });
+
+    document.getElementById('lastDate').textContent = today;
+    setStatus('저장 완료!', 'ok');
+  } catch(e) {
+    setStatus('저장 실패: ' + e.message, 'err');
+  }
+  btn.disabled = false;
+}
+
+/* ── UI 헬퍼 ── */
+function pct(val, target) { return Math.min(100, Math.round((val / target) * 100)); }
+function pctColor(p) { return p >= 80 ? '#1D9E75' : p >= 50 ? '#BA7517' : '#E24B4A'; }
+function bestVal() { return Math.max(0, ...channels.map(c => c.val)); }
+function kr3Pct() { return pct(bestVal(), 3000); }
+function hideLoading() { document.getElementById('loadingOverlay').style.display = 'none'; }
+function setStatus(msg, type) {
+  const el = document.getElementById('statusMsg');
+  el.textContent = msg;
+  el.className = 'status-msg' + (type ? ' ' + type : '');
+  if (type === 'ok') setTimeout(() => el.textContent = '', 3000);
+}
+
+function updateSummary() {
+  const allPcts = krs.map(k => pct(state[k.id], k.target));
+  allPcts.push(kr3Pct());
+  const filled = krs.filter(k => state[k.id] > 0).length + (bestVal() > 0 ? 1 : 0);
+  const avg = Math.round(allPcts.reduce((a,b) => a+b, 0) / 5);
+  document.getElementById('totalPct').textContent = avg + '%';
+  document.getElementById('totalFilled').textContent = filled + ' / 5 KR 입력됨';
+  document.getElementById('sumBarFill').style.width = avg + '%';
+}
+
+function refreshKR3() {
+  const bv = bestVal();
+  const p = kr3Pct();
+  document.getElementById('kr3pct').textContent = p + '%';
+  document.getElementById('kr3pct').style.color = pctColor(p);
+  document.getElementById('kr3bar').style.width = p + '%';
+  document.getElementById('kr3bar').style.background = pctColor(p);
+  document.getElementById('kr3cur').textContent = bv.toLocaleString() + '명';
+  channels.forEach(ch => {
+    const card = document.getElementById('chcard-' + ch.id);
+    const badge = document.getElementById('badge-' + ch.id);
+    if (!card) return;
+    if (bv > 0 && ch.val === bv) { card.classList.add('best'); badge.style.display = 'block'; }
+    else { card.classList.remove('best'); badge.style.display = 'none'; }
+  });
+  updateSummary();
+}
+
+function renderKR3() {
+  const bv = bestVal();
+  const p = kr3Pct();
+  return `<div class="kr-card wide">
+    <div class="kr-top">
+      <div class="kr-label">KR 3</div>
+      <div class="kr-pct" id="kr3pct" style="color:${pctColor(p)}">${p}%</div>
+    </div>
+    <div class="kr-desc">신규 인스타 팔로워 — 가장 많은 채널 기준 적용</div>
+    <div class="kr-nums">
+      <span>최고 채널: <strong id="kr3cur">${bv.toLocaleString()}명</strong></span>
+      <span>목표: <strong>3,000명</strong></span>
+    </div>
+    <div class="kr-bar-bg" style="margin-bottom:14px">
+      <div class="kr-bar-fill" id="kr3bar" style="width:${p}%;background:${pctColor(p)}"></div>
+    </div>
+    <div class="ch-grid">
+      ${channels.map((ch,i) => `
+        <div class="ch-card" id="chcard-${ch.id}">
+          <div class="ch-name-row">
+            <div class="ch-dot" style="background:${chColors[i]}"></div>
+            <span class="ch-name-inp">${ch.name}</span>
+          </div>
+          <input class="ch-val-inp" type="number" value="${ch.val||''}" placeholder="팔로워" data-chid="${ch.id}" />
+          <div class="ch-unit">명</div>
+          <div class="best-badge" id="badge-${ch.id}">최고 채널</div>
+        </div>
+      `).join('')}
+    </div>
+  </div>`;
+}
+
+function renderKRCard(kr) {
+  const val = state[kr.id];
+  const p = pct(val, kr.target);
+  return `<div class="kr-card" id="card-${kr.id}">
+    <div class="kr-top">
+      <div class="kr-label">${kr.label}</div>
+      <div class="kr-pct" id="pct-${kr.id}" style="color:${pctColor(p)}">${p}%</div>
+    </div>
+    <div class="kr-desc">${kr.desc}</div>
+    <div class="kr-nums">
+      <span>현재: <strong id="cur-${kr.id}">${kr.format(val)}</strong></span>
+      <span>목표: <strong>${kr.format(kr.target)}</strong></span>
+    </div>
+    <div class="kr-bar-bg"><div class="kr-bar-fill" id="bar-${kr.id}" style="width:${p}%;background:${pctColor(p)}"></div></div>
+    <div class="kr-input-row">
+      <label>${kr.lbl}</label>
+      <input type="number" placeholder="${kr.ph}" value="${val||''}" data-krid="${kr.id}" />
+    </div>
+  </div>`;
+}
+
+function render() {
+  const grid = document.getElementById('krGrid');
+  grid.innerHTML = renderKRCard(krs[0]) + renderKRCard(krs[1]) + renderKR3() + renderKRCard(krs[2]) + renderKRCard(krs[3]);
+
+  document.querySelectorAll('[data-krid]').forEach(inp => {
+    inp.addEventListener('input', e => {
+      const kr = krs.find(k => k.id === e.target.dataset.krid);
+      state[kr.id] = kr.parse(e.target.value);
+      const p = pct(state[kr.id], kr.target);
+      document.getElementById('pct-'+kr.id).textContent = p + '%';
+      document.getElementById('pct-'+kr.id).style.color = pctColor(p);
+      document.getElementById('bar-'+kr.id).style.width = p + '%';
+      document.getElementById('bar-'+kr.id).style.background = pctColor(p);
+      document.getElementById('cur-'+kr.id).textContent = kr.format(state[kr.id]);
+      updateSummary();
+    });
+  });
+
+  document.querySelectorAll('[data-chid]').forEach(inp => {
+    inp.addEventListener('input', e => {
+      const ch = channels.find(c => c.id === e.target.dataset.chid);
+      ch.val = parseFloat(e.target.value) || 0;
+      refreshKR3();
+    });
+  });
+
+  updateSummary();
+}
+
+loadFromSheet();
+</script>
+</body>
+</html>
