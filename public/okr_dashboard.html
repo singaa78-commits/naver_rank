@@ -4,81 +4,152 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>OKR 대시보드</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
+  :root {
+    --bg: #f0f2ee;
+    --card: #ffffff;
+    --card-dark: #1a1c18;
+    --accent-green: #8afa9e;
+    --accent-purple: #c4b5fd;
+    --accent-yellow: #fde68a;
+    --text-primary: #1a1c18;
+    --text-secondary: #6b7280;
+    --text-light: #9ca3af;
+    --border: #e5e7eb;
+    --radius: 20px;
+    --radius-sm: 12px;
+  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Pretendard', -apple-system, sans-serif; background: #f8f7f4; color: #1a1a1a; min-height: 100vh; padding: 2rem 1.5rem; }
-  .obj-badge { display: inline-block; font-size: 11px; font-weight: 500; background: #f0ede8; border: 0.5px solid #ddd; border-radius: 8px; padding: 4px 10px; color: #888; letter-spacing: 0.04em; margin-bottom: 8px; }
-  .obj-title { font-size: 20px; font-weight: 600; color: #1a1a1a; line-height: 1.4; margin-bottom: 1.5rem; }
-  .summary-bar { display: flex; align-items: center; gap: 20px; background: #fff; border: 0.5px solid #e0ddd6; border-radius: 14px; padding: 1.1rem 1.4rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
-  .sum-label { font-size: 12px; color: #888; margin-bottom: 3px; }
-  .sum-val { font-size: 26px; font-weight: 600; color: #1a1a1a; }
-  .sum-sub { font-size: 12px; color: #aaa; margin-top: 2px; }
-  .sum-divider { width: 1px; height: 44px; background: #e8e5e0; }
-  .sum-progress { flex: 1; min-width: 120px; }
-  .sum-bar-bg { height: 8px; background: #f0ede8; border-radius: 99px; overflow: hidden; margin-top: 6px; }
-  .sum-bar-fill { height: 100%; border-radius: 99px; background: #1D9E75; transition: width 0.5s ease; }
-  .kr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 12px; }
-  .kr-card { background: #fff; border: 0.5px solid #e0ddd6; border-radius: 14px; padding: 1.2rem 1.4rem; }
-  .kr-card.wide { grid-column: 1 / -1; }
-  .kr-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
-  .kr-label { font-size: 11px; font-weight: 600; color: #aaa; letter-spacing: 0.06em; }
-  .kr-pct { font-size: 22px; font-weight: 600; }
-  .kr-desc { font-size: 13px; color: #444; margin-bottom: 12px; }
-  .kr-nums { display: flex; justify-content: space-between; font-size: 12px; color: #999; margin-bottom: 6px; }
-  .kr-bar-bg { height: 5px; background: #f0ede8; border-radius: 99px; overflow: hidden; }
-  .kr-bar-fill { height: 100%; border-radius: 99px; transition: width 0.5s ease; }
-  .ch-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 12px; }
-  @media (max-width: 700px) { .ch-grid { grid-template-columns: repeat(3, 1fr); } }
-  .ch-card { background: #faf9f7; border-radius: 10px; padding: 10px 12px; border: 0.5px solid transparent; }
-  .ch-card.best { border-color: #1D9E75; background: #f0faf6; }
-  .ch-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-  .ch-name-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
-  .ch-name { font-size: 12px; font-weight: 600; color: #333; }
-  .ch-val { font-size: 20px; font-weight: 600; color: #1a1a1a; }
-  .ch-unit { font-size: 11px; color: #bbb; margin-top: 1px; }
-  .best-badge { font-size: 10px; font-weight: 600; background: #d4f5e9; color: #0a6e47; border-radius: 6px; padding: 2px 6px; display: none; margin-top: 5px; }
-  .last-updated { font-size: 11px; color: #bbb; text-align: right; }
-  .loading-overlay { position: fixed; inset: 0; background: rgba(248,247,244,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; z-index: 100; }
-  .loading-spinner { width: 28px; height: 28px; border: 2px solid #e0ddd6; border-top-color: #1a1a1a; border-radius: 50%; animation: spin 0.7s linear infinite; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text-primary); min-height: 100vh; padding: 2rem; }
+
+  /* 로딩 */
+  .loading-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; z-index: 100; }
+  .loading-spinner { width: 32px; height: 32px; border: 2.5px solid #ddd; border-top-color: var(--text-primary); border-radius: 50%; animation: spin 0.7s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .loading-text { font-size: 13px; color: #888; }
-  .error-msg { background: #fff5f5; border: 0.5px solid #fcc; border-radius: 10px; padding: 12px 16px; font-size: 13px; color: #c00; margin-bottom: 1rem; display: none; }
+  .loading-text { font-size: 13px; color: var(--text-secondary); letter-spacing: 0.02em; }
+
+  /* 헤더 */
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem; }
+  .header-left {}
+  .obj-badge { font-size: 10px; font-weight: 500; letter-spacing: 0.12em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 6px; }
+  .obj-title { font-size: 22px; font-weight: 600; line-height: 1.35; color: var(--text-primary); }
+  .header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .last-date { font-size: 11px; color: var(--text-light); font-family: 'DM Mono', monospace; }
+
+  /* 전체 달성률 큰 카드 */
+  .summary-card { background: var(--card-dark); border-radius: var(--radius); padding: 1.75rem 2rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 2rem; flex-wrap: wrap; }
+  .summary-pct-wrap { display: flex; align-items: baseline; gap: 6px; }
+  .summary-pct { font-size: 56px; font-weight: 300; color: #fff; line-height: 1; letter-spacing: -2px; }
+  .summary-pct-sign { font-size: 24px; color: var(--accent-green); font-weight: 500; }
+  .summary-label { font-size: 12px; color: #9ca3af; margin-top: 4px; letter-spacing: 0.04em; }
+  .summary-bar-wrap { flex: 1; min-width: 160px; }
+  .summary-bar-label { font-size: 11px; color: #6b7280; margin-bottom: 8px; letter-spacing: 0.04em; }
+  .summary-bar-bg { height: 6px; background: #2d2f2b; border-radius: 99px; overflow: hidden; }
+  .summary-bar-fill { height: 100%; border-radius: 99px; background: var(--accent-green); transition: width 1s cubic-bezier(.4,0,.2,1); }
+  .summary-stats { display: flex; gap: 2rem; flex-wrap: wrap; }
+  .stat-item { }
+  .stat-val { font-size: 18px; font-weight: 500; color: #fff; }
+  .stat-label { font-size: 11px; color: #6b7280; margin-top: 2px; }
+
+  /* KR 그리드 */
+  .kr-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  @media (max-width: 900px) { .kr-grid { grid-template-columns: 1fr; } }
+  .kr-card { background: var(--card); border-radius: var(--radius); padding: 1.5rem; border: 1px solid var(--border); position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; }
+  .kr-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.07); }
+  .kr-card.wide { grid-column: 1 / -1; }
+  .kr-card.accent-green { background: var(--accent-green); border-color: transparent; }
+  .kr-card.accent-purple { background: var(--accent-purple); border-color: transparent; }
+
+  /* KR 카드 내부 */
+  .kr-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+  .kr-badge { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; color: var(--text-secondary); background: var(--bg); padding: 4px 10px; border-radius: 99px; }
+  .kr-card.accent-green .kr-badge,
+  .kr-card.accent-purple .kr-badge { background: rgba(0,0,0,0.08); color: rgba(0,0,0,0.5); }
+  .kr-pct { font-size: 36px; font-weight: 300; color: var(--text-primary); letter-spacing: -1px; line-height: 1; }
+  .kr-pct-sign { font-size: 16px; font-weight: 400; }
+  .kr-desc { font-size: 14px; font-weight: 500; color: var(--text-primary); margin-bottom: 1.25rem; line-height: 1.4; }
+  .kr-nums-row { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 10px; }
+  .kr-current { }
+  .kr-current-label { font-size: 10px; color: var(--text-secondary); margin-bottom: 2px; letter-spacing: 0.04em; }
+  .kr-current-val { font-size: 22px; font-weight: 600; color: var(--text-primary); font-family: 'DM Mono', monospace; }
+  .kr-target { text-align: right; }
+  .kr-target-label { font-size: 10px; color: var(--text-secondary); margin-bottom: 2px; letter-spacing: 0.04em; }
+  .kr-target-val { font-size: 13px; font-weight: 500; color: var(--text-secondary); font-family: 'DM Mono', monospace; }
+  .kr-bar-bg { height: 4px; background: rgba(0,0,0,0.08); border-radius: 99px; overflow: hidden; }
+  .kr-bar-fill { height: 100%; border-radius: 99px; background: var(--text-primary); transition: width 1s cubic-bezier(.4,0,.2,1); }
+  .kr-card.accent-green .kr-bar-fill,
+  .kr-card.accent-purple .kr-bar-fill { background: rgba(0,0,0,0.3); }
+
+  /* KR3 채널 그리드 */
+  .ch-section-title { font-size: 11px; font-weight: 500; color: var(--text-secondary); letter-spacing: 0.06em; margin: 1.25rem 0 10px; text-transform: uppercase; }
+  .ch-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+  @media (max-width: 700px) { .ch-grid { grid-template-columns: repeat(3, 1fr); } }
+  .ch-card { background: var(--bg); border-radius: var(--radius-sm); padding: 12px 14px; border: 1.5px solid transparent; transition: border-color 0.2s, background 0.2s; }
+  .ch-card.best { background: #fff; border-color: var(--text-primary); }
+  .ch-dot-row { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+  .ch-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .ch-name { font-size: 11px; font-weight: 600; color: var(--text-secondary); }
+  .ch-val { font-size: 22px; font-weight: 600; color: var(--text-primary); font-family: 'DM Mono', monospace; line-height: 1; }
+  .ch-unit { font-size: 10px; color: var(--text-light); margin-top: 3px; }
+  .best-tag { display: none; font-size: 9px; font-weight: 600; background: var(--text-primary); color: #fff; border-radius: 4px; padding: 2px 6px; margin-top: 6px; letter-spacing: 0.04em; }
+  .ch-card.best .best-tag { display: inline-block; }
+
+  /* 애니메이션 */
+  .kr-card { animation: fadeUp 0.4s ease both; }
+  .kr-card:nth-child(1) { animation-delay: 0.05s; }
+  .kr-card:nth-child(2) { animation-delay: 0.10s; }
+  .kr-card:nth-child(3) { animation-delay: 0.15s; }
+  .kr-card:nth-child(4) { animation-delay: 0.20s; }
+  .kr-card:nth-child(5) { animation-delay: 0.25s; }
+  @keyframes fadeUp { from { opacity:0; transform: translateY(16px); } to { opacity:1; transform: translateY(0); } }
 </style>
 </head>
 <body>
 
 <div class="loading-overlay" id="loadingOverlay">
   <div class="loading-spinner"></div>
-  <div class="loading-text">데이터 불러오는 중...</div>
+  <div class="loading-text">데이터 불러오는 중</div>
 </div>
 
-<div class="obj-badge">OBJECTIVE</div>
-<div class="obj-title">콘텐츠를 연료로 매출을 만드는<br>그로스 엔진이 된다</div>
+<div class="header">
+  <div class="header-left">
+    <div class="obj-badge">Objective</div>
+    <div class="obj-title">콘텐츠를 연료로 매출을 만드는<br>그로스 엔진이 된다</div>
+  </div>
+  <div class="header-right">
+    <div class="last-date" id="lastDate">—</div>
+  </div>
+</div>
 
-<div class="error-msg" id="errorMsg"></div>
-
-<div class="summary-bar">
+<div class="summary-card">
   <div>
-    <div class="sum-label">전체 달성률</div>
-    <div class="sum-val" id="totalPct">—</div>
-    <div class="sum-sub" id="totalFilled">—</div>
+    <div class="summary-pct-wrap">
+      <div class="summary-pct" id="totalPct">—</div>
+      <div class="summary-pct-sign">%</div>
+    </div>
+    <div class="summary-label">전체 달성률</div>
   </div>
-  <div class="sum-divider"></div>
-  <div class="sum-progress">
-    <div class="sum-label">KR 평균 진행률</div>
-    <div class="sum-bar-bg"><div class="sum-bar-fill" id="sumBarFill" style="width:0%"></div></div>
+  <div class="summary-bar-wrap">
+    <div class="summary-bar-label">KR 평균 진행률</div>
+    <div class="summary-bar-bg"><div class="summary-bar-fill" id="sumBarFill" style="width:0%"></div></div>
   </div>
-  <div class="last-updated" id="lastDate"></div>
+  <div class="summary-stats">
+    <div class="stat-item">
+      <div class="stat-val" id="filledKR">—</div>
+      <div class="stat-label">KR 입력됨</div>
+    </div>
+  </div>
 </div>
 
 <div class="kr-grid" id="krGrid"></div>
 
 <script>
 const KR_DEFS = [
-  { id:'kr1',  label:'KR 1', desc:'SNS 전환 매출',      target:10000000, format:v=>(v/10000).toFixed(0)+'만원' },
-  { id:'kr2',  label:'KR 2', desc:'기존 인스타 팔로워', target:70000,    format:v=>(v/10000).toFixed(1)+'만'   },
-  { id:'kr4',  label:'KR 4', desc:'Meta 광고 ROAS',     target:700,      format:v=>v+'%'                       },
-  { id:'kr5',  label:'KR 5', desc:'Meta CVR',           target:10,       format:v=>parseFloat(v).toFixed(1)+'%'},
+  { id:'kr1',  label:'KR 1', desc:'SNS 전환 매출',      target:10000000, format:v=>(v/10000).toFixed(0)+'만원', accent:'accent-green' },
+  { id:'kr2',  label:'KR 2', desc:'기존 인스타 팔로워', target:70000,    format:v=>(v/10000).toFixed(1)+'만명', accent:'' },
+  { id:'kr4',  label:'KR 4', desc:'Meta 광고 ROAS',     target:700,      format:v=>v+'%',                       accent:'' },
+  { id:'kr5',  label:'KR 5', desc:'Meta CVR',           target:10,       format:v=>parseFloat(v).toFixed(1)+'%', accent:'accent-purple' },
 ];
 const CH_KEYS   = ['kr3_싹그로스','kr3_노예스','kr3_영도남자','kr3_원팬','kr3_채널5'];
 const CH_NAMES  = ['싹그로스','노예스','영도남자','원팬','채널 5'];
@@ -86,92 +157,105 @@ const CH_COLORS = ['#7F77DD','#1D9E75','#378ADD','#D4537E','#BA7517'];
 const KR3_TARGET = 3000;
 
 function pct(val, target){ return Math.min(100, Math.round((parseFloat(val)||0) / target * 1000) / 10); }
-function pctColor(p){ return p>=80?'#1D9E75':p>=50?'#BA7517':'#E24B4A'; }
 
 function renderDashboard(data) {
   const d = data.data || {};
-
-  // KR3 채널값
   const chVals = CH_KEYS.map(k => parseFloat(d[k])||0);
   const bestCh = Math.max(0, ...chVals);
   const kr3p   = pct(bestCh, KR3_TARGET);
-
-  // 전체 달성률
   const allPcts = KR_DEFS.map(kr => pct(d[kr.id]||0, kr.target));
   allPcts.push(kr3p);
-  const avg    = Math.round(allPcts.reduce((a,b)=>a+b,0) / 5);
+  const avg    = Math.round(allPcts.reduce((a,b)=>a+b,0) / 5 * 10) / 10;
   const filled = KR_DEFS.filter(kr => d[kr.id] && d[kr.id] !== '').length + (bestCh > 0 ? 1 : 0);
 
-  document.getElementById('totalPct').textContent    = avg.toFixed(1) + '%';
-  document.getElementById('totalFilled').textContent = filled + ' / 5 KR 입력됨';
-  document.getElementById('sumBarFill').style.width  = avg + '%';
-  document.getElementById('lastDate').textContent    = data.updatedAt ? '기준일: ' + data.updatedAt : '';
+  document.getElementById('totalPct').textContent  = avg.toFixed(1);
+  document.getElementById('filledKR').textContent  = filled + ' / 5';
+  document.getElementById('sumBarFill').style.width = avg + '%';
+  document.getElementById('lastDate').textContent  = data.updatedAt ? '기준일: ' + data.updatedAt : '';
 
   const grid = document.getElementById('krGrid');
   let html = '';
 
-  // KR1, KR2
-  [KR_DEFS[0], KR_DEFS[1]].forEach(kr => {
+  KR_DEFS.slice(0,2).forEach(kr => {
     const val = parseFloat(d[kr.id])||0;
     const p   = pct(val, kr.target);
-    html += `<div class="kr-card">
-      <div class="kr-top"><div class="kr-label">${kr.label}</div><div class="kr-pct" style="color:${pctColor(p)}">${typeof p === "number" ? p.toFixed(1) : p}%</div></div>
-      <div class="kr-desc">${kr.desc}</div>
-      <div class="kr-nums"><span>현재: <strong>${kr.format(val)}</strong></span><span>목표: <strong>${kr.format(kr.target)}</strong></span></div>
-      <div class="kr-bar-bg"><div class="kr-bar-fill" style="width:${p}%;background:${pctColor(p)}"></div></div>
-    </div>`;
+    html += krCardHTML(kr, val, p);
   });
 
   // KR3
   html += `<div class="kr-card wide">
-    <div class="kr-top"><div class="kr-label">KR 3</div><div class="kr-pct" style="color:${pctColor(kr3p)}">${kr3p.toFixed(1)}%</div></div>
+    <div class="kr-header">
+      <div class="kr-badge">KR 3</div>
+      <div class="kr-pct">${kr3p.toFixed(1)}<span class="kr-pct-sign">%</span></div>
+    </div>
     <div class="kr-desc">신규 인스타 팔로워 — 가장 많은 채널 기준 적용</div>
-    <div class="kr-nums"><span>최고 채널: <strong>${bestCh.toLocaleString()}명</strong></span><span>목표: <strong>3,000명</strong></span></div>
-    <div class="kr-bar-bg"><div class="kr-bar-fill" style="width:${kr3p}%;background:${pctColor(kr3p)}"></div></div>
-    <div class="ch-grid">`;
+    <div class="kr-nums-row">
+      <div class="kr-current">
+        <div class="kr-current-label">최고 채널</div>
+        <div class="kr-current-val">${bestCh > 0 ? bestCh.toLocaleString() : '—'}<span style="font-size:13px;font-weight:400;color:var(--text-secondary)"> 명</span></div>
+      </div>
+      <div class="kr-target">
+        <div class="kr-target-label">목표</div>
+        <div class="kr-target-val">3,000 명</div>
+      </div>
+    </div>
+    <div class="kr-bar-bg"><div class="kr-bar-fill" style="width:${kr3p}%"></div></div>
+    <div class="ch-section-title">채널별 현황</div>
+    <div class="ch-grid">
+      ${chVals.map((val, i) => {
+        const isBest = bestCh > 0 && val === bestCh;
+        return `<div class="ch-card${isBest?' best':''}">
+          <div class="ch-dot-row"><div class="ch-dot" style="background:${CH_COLORS[i]}"></div><div class="ch-name">${CH_NAMES[i]}</div></div>
+          <div class="ch-val">${val > 0 ? val.toLocaleString() : '—'}</div>
+          <div class="ch-unit">명</div>
+          <div class="best-tag">TOP</div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
 
-  chVals.forEach((val, i) => {
-    const isBest = bestCh > 0 && val === bestCh;
-    html += `<div class="ch-card${isBest?' best':''}">
-      <div class="ch-name-row"><div class="ch-dot" style="background:${CH_COLORS[i]}"></div><div class="ch-name">${CH_NAMES[i]}</div></div>
-      <div class="ch-val">${val > 0 ? val.toLocaleString() : '—'}</div>
-      <div class="ch-unit">명</div>
-      <div class="best-badge" style="${isBest?'display:block':''}">최고 채널</div>
-    </div>`;
-  });
-
-  html += `</div></div>`;
-
-  // KR4, KR5
-  [KR_DEFS[2], KR_DEFS[3]].forEach(kr => {
+  KR_DEFS.slice(2).forEach(kr => {
     const val = parseFloat(d[kr.id])||0;
     const p   = pct(val, kr.target);
-    html += `<div class="kr-card">
-      <div class="kr-top"><div class="kr-label">${kr.label}</div><div class="kr-pct" style="color:${pctColor(p)}">${typeof p === "number" ? p.toFixed(1) : p}%</div></div>
-      <div class="kr-desc">${kr.desc}</div>
-      <div class="kr-nums"><span>현재: <strong>${kr.format(val)}</strong></span><span>목표: <strong>${kr.format(kr.target)}</strong></span></div>
-      <div class="kr-bar-bg"><div class="kr-bar-fill" style="width:${p}%;background:${pctColor(p)}"></div></div>
-    </div>`;
+    html += krCardHTML(kr, val, p);
   });
 
   grid.innerHTML = html;
+  document.getElementById('loadingOverlay').style.display = 'none';
+}
+
+function krCardHTML(kr, val, p) {
+  return `<div class="kr-card ${kr.accent||''}">
+    <div class="kr-header">
+      <div class="kr-badge">${kr.label}</div>
+      <div class="kr-pct">${p.toFixed(1)}<span class="kr-pct-sign">%</span></div>
+    </div>
+    <div class="kr-desc">${kr.desc}</div>
+    <div class="kr-nums-row">
+      <div class="kr-current">
+        <div class="kr-current-label">현재</div>
+        <div class="kr-current-val">${kr.format(val)}</div>
+      </div>
+      <div class="kr-target">
+        <div class="kr-target-label">목표</div>
+        <div class="kr-target-val">${kr.format(kr.target)}</div>
+      </div>
+    </div>
+    <div class="kr-bar-bg"><div class="kr-bar-fill" style="width:${p}%"></div></div>
+  </div>`;
 }
 
 async function loadData() {
   try {
     const res = await fetch('okr_data.json?t=' + Date.now());
-    if (!res.ok) throw new Error('okr_data.json 로드 실패 (' + res.status + ')');
+    if (!res.ok) throw new Error(res.status);
     const data = await res.json();
     renderDashboard(data);
-    document.getElementById('loadingOverlay').style.display = 'none';
   } catch(e) {
     document.getElementById('loadingOverlay').style.display = 'none';
-    const err = document.getElementById('errorMsg');
-    err.style.display = 'block';
-    err.textContent = '데이터를 불러올 수 없습니다. Actions가 실행된 후 다시 시도해주세요. (' + e.message + ')';
+    document.getElementById('krGrid').innerHTML = `<div style="grid-column:1/-1;padding:2rem;background:#fff;border-radius:20px;font-size:13px;color:#888">데이터를 불러올 수 없습니다. Actions 실행 후 다시 시도해주세요.</div>`;
   }
 }
-
 loadData();
 </script>
 </body>
