@@ -232,6 +232,35 @@ def parse_reviews(rows):
         "trends":  {"dates": [label(d) for d in used], "data": trend_data},
     }
 
+def inject_okr_key():
+    okr_key_json = os.environ.get("OKR_SERVICE_ACCOUNT_KEY", "")
+    okr_sheet_id = os.environ.get("OKR_SHEET_ID", "")
+    if not okr_key_json or not okr_sheet_id:
+        print("OKR_SERVICE_ACCOUNT_KEY 또는 OKR_SHEET_ID 없음 — 주입 건너뜀")
+        return
+    html_path = "public/okr_dashboard.html"
+    if not os.path.exists(html_path):
+        print(f"{html_path} 없음 — 주입 건너뜀")
+        return
+    with open(html_path, "r", encoding="utf-8") as f:
+        html = f.read()
+    key_obj = json.loads(okr_key_json)
+    key_js = json.dumps(key_obj, ensure_ascii=False)
+    html = re.sub(
+        r'const SERVICE_ACCOUNT_JSON = \{[\s\S]*?\};',
+        f'const SERVICE_ACCOUNT_JSON = {key_js};',
+        html
+    )
+    html = re.sub(
+        r"const SHEET_ID = '[^']*';",
+        f"const SHEET_ID = '{okr_sheet_id}';",
+        html
+    )
+    with open(html_path, "w", encoding="utf-8") as f:
+        f.write(html)
+    print("✅ OKR 키 주입 완료")
+
+
 def main():
     print("토큰 발급 중…")
     token = get_token()
@@ -259,6 +288,8 @@ def main():
         json.dump(output, f, ensure_ascii=False, indent=2)
 
     print(f"✅ 저장 완료 — 제품 {len(rank_data['products'])}개, 리뷰 {len(rev_data['latest'])}개")
+    print("OKR 키 주입 중…")
+    inject_okr_key()
 
 if __name__ == "__main__":
     main()

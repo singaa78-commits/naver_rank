@@ -28,6 +28,8 @@ jobs:
           RANK_TAB:              ${{ secrets.RANK_TAB }}
           REVIEW_SHEET_ID:       ${{ secrets.REVIEW_SHEET_ID }}
           REVIEW_TAB:            ${{ secrets.REVIEW_TAB }}
+          OKR_SERVICE_ACCOUNT_KEY: ${{ secrets.OKR_SERVICE_ACCOUNT_KEY }}
+          OKR_SHEET_ID:            ${{ secrets.OKR_SHEET_ID }}
         run: python scripts/fetch_data.py
 
       - name: GitHub Pages 배포
