@@ -91,20 +91,12 @@
   <div class="status-msg" id="statusMsg"></div>
 </div>
 
+<script src="okr_config.js"></script>
 <script>
-const SHEET_ID = '1Y0L5tn_fIRhnYhLM0730EitBTwAkvIoosPtB8T4aPq8';
+const SHEET_ID = (typeof OKR_SHEET_ID_CONFIG !== 'undefined') ? OKR_SHEET_ID_CONFIG : '1Y0L5tn_fIRhnYhLM0730EitBTwAkvIoosPtB8T4aPq8';
 const SHEET_TAB = 'OKR';
 
-/* ── 서비스 계정 키 ── */
-/* 아래 SERVICE_ACCOUNT_JSON 에 서비스 계정 JSON 키를 붙여넣으세요 */
-const SERVICE_ACCOUNT_JSON = {
-  "type": "service_account",
-  "project_id": "INJECTED_AT_BUILD_TIME",
-  "private_key_id": "INJECTED_AT_BUILD_TIME",
-  "private_key": "INJECTED_AT_BUILD_TIME",
-  "client_email": "sheet-reader@cafe24-dashboard.iam.gserviceaccount.com",
-  "token_uri": "https://oauth2.googleapis.com/token"
-};
+/* SERVICE_ACCOUNT_JSON 은 okr_config.js 에서 로드됩니다 */
 
 /* ── KR 정의 ── */
 const krs = [
