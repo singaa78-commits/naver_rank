@@ -232,26 +232,70 @@ def parse_reviews(rows):
         "trends":  {"dates": [label(d) for d in used], "data": trend_data},
     }
 
-def inject_okr_key():
+def fetch_okr_data():
+    """OKR 시트에서 최신 데이터를 읽어 okr_data.json 으로 저장"""
     okr_key_json = os.environ.get("OKR_SERVICE_ACCOUNT_KEY", "")
     okr_sheet_id = os.environ.get("OKR_SHEET_ID", "")
     if not okr_key_json or not okr_sheet_id:
-        print("OKR_SERVICE_ACCOUNT_KEY 또는 OKR_SHEET_ID 없음 — 주입 건너뜀")
+        print("OKR_SERVICE_ACCOUNT_KEY 또는 OKR_SHEET_ID 없음 — 건너뜀")
         return
+
+    # OKR 전용 토큰 발급
     key_obj = json.loads(okr_key_json)
-    # private_key 안의 실제 줄바꿈을 \n 이스케이프로 유지 (브라우저 atob 오류 방지)
-    pk = key_obj["private_key"].replace("\n", "\\n")
-    key_obj["private_key"] = pk
-    key_js = json.dumps(key_obj, ensure_ascii=False)
-    # HTML이 아닌 별도 config.js 파일에 키 저장 (GitHub Push Protection 우회)
-    config_js = f"""/* 이 파일은 GitHub Actions에서 자동 생성됩니다. 직접 수정하지 마세요. */
-const SERVICE_ACCOUNT_JSON = {key_js};
-const OKR_SHEET_ID_CONFIG = '{okr_sheet_id}';
-"""
+    okr_email = key_obj["client_email"]
+    okr_pk    = key_obj["private_key"].replace("\\n", "\n")
+    now = int(time.time())
+    payload = {
+        "iss":   okr_email,
+        "scope": "https://www.googleapis.com/auth/spreadsheets",
+        "aud":   "https://oauth2.googleapis.com/token",
+        "exp":   now + 3600,
+        "iat":   now,
+    }
+    signer = google.auth.crypt.RSASigner.from_service_account_info({
+        "private_key":  okr_pk,
+        "client_email": okr_email,
+    })
+    jwt_token = google.auth.jwt.encode(signer, payload).decode()
+    data = urllib.parse.urlencode({
+        "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
+        "assertion":  jwt_token,
+    }).encode()
+    req = urllib.request.Request("https://oauth2.googleapis.com/token", data=data)
+    with urllib.request.urlopen(req) as resp:
+        token = json.loads(resp.read())["access_token"]
+
+    # 시트 읽기
+    rows = fetch_sheet(token, okr_sheet_id, "OKR")
+    if len(rows) < 2:
+        print("OKR 시트 데이터 없음")
+        return
+
+    headers = rows[0]  # date, kr1, kr2, kr3_싹그로스, ...
+    latest  = {}
+    latest_date = ""
+
+    # 각 컬럼별 가장 최신 값 추출
+    for row in rows[1:]:
+        date = row[0] if row else ""
+        for i, h in enumerate(headers):
+            if h == "date":
+                continue
+            val = row[i] if i < len(row) else ""
+            if val != "":
+                latest[h] = val
+                if date > latest_date:
+                    latest_date = date
+
+    output = {
+        "updatedAt": latest_date,
+        "data": latest,
+        "headers": headers,
+    }
     os.makedirs("public", exist_ok=True)
-    with open("public/okr_config.js", "w", encoding="utf-8") as f:
-        f.write(config_js)
-    print("✅ OKR 키 주입 완료 (okr_config.js)")
+    with open("public/okr_data.json", "w", encoding="utf-8") as f:
+        json.dump(output, f, ensure_ascii=False, indent=2)
+    print(f"✅ OKR 데이터 저장 완료 (기준일: {latest_date})")
 
 
 def main():
@@ -281,8 +325,8 @@ def main():
         json.dump(output, f, ensure_ascii=False, indent=2)
 
     print(f"✅ 저장 완료 — 제품 {len(rank_data['products'])}개, 리뷰 {len(rev_data['latest'])}개")
-    print("OKR 키 주입 중…")
-    inject_okr_key()
+    print("OKR 데이터 수집 중…")
+    fetch_okr_data()
 
 if __name__ == "__main__":
     main()
