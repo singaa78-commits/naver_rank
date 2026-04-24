@@ -245,6 +245,8 @@ def inject_okr_key():
     with open(html_path, "r", encoding="utf-8") as f:
         html = f.read()
     key_obj = json.loads(okr_key_json)
+    # private_key 안의 실제 줄바꿈을 \n 이스케이프로 유지 (브라우저 atob 오류 방지)
+    key_obj["private_key"] = key_obj["private_key"].replace("\n", "\\n")
     key_js = json.dumps(key_obj, ensure_ascii=False)
     html = re.sub(
         r'const SERVICE_ACCOUNT_JSON = \{[\s\S]*?\};',
