@@ -85,7 +85,7 @@ const CH_NAMES  = ['싹그로스','노예스','영도남자','원팬','채널 5'
 const CH_COLORS = ['#7F77DD','#1D9E75','#378ADD','#D4537E','#BA7517'];
 const KR3_TARGET = 3000;
 
-function pct(val, target){ return Math.min(100, Math.round((parseFloat(val)||0) / target * 100)); }
+function pct(val, target){ return Math.min(100, Math.round((parseFloat(val)||0) / target * 1000) / 10); }
 function pctColor(p){ return p>=80?'#1D9E75':p>=50?'#BA7517':'#E24B4A'; }
 
 function renderDashboard(data) {
@@ -102,7 +102,7 @@ function renderDashboard(data) {
   const avg    = Math.round(allPcts.reduce((a,b)=>a+b,0) / 5);
   const filled = KR_DEFS.filter(kr => d[kr.id] && d[kr.id] !== '').length + (bestCh > 0 ? 1 : 0);
 
-  document.getElementById('totalPct').textContent    = avg + '%';
+  document.getElementById('totalPct').textContent    = avg.toFixed(1) + '%';
   document.getElementById('totalFilled').textContent = filled + ' / 5 KR 입력됨';
   document.getElementById('sumBarFill').style.width  = avg + '%';
   document.getElementById('lastDate').textContent    = data.updatedAt ? '기준일: ' + data.updatedAt : '';
@@ -115,7 +115,7 @@ function renderDashboard(data) {
     const val = parseFloat(d[kr.id])||0;
     const p   = pct(val, kr.target);
     html += `<div class="kr-card">
-      <div class="kr-top"><div class="kr-label">${kr.label}</div><div class="kr-pct" style="color:${pctColor(p)}">${p}%</div></div>
+      <div class="kr-top"><div class="kr-label">${kr.label}</div><div class="kr-pct" style="color:${pctColor(p)}">${typeof p === "number" ? p.toFixed(1) : p}%</div></div>
       <div class="kr-desc">${kr.desc}</div>
       <div class="kr-nums"><span>현재: <strong>${kr.format(val)}</strong></span><span>목표: <strong>${kr.format(kr.target)}</strong></span></div>
       <div class="kr-bar-bg"><div class="kr-bar-fill" style="width:${p}%;background:${pctColor(p)}"></div></div>
@@ -124,7 +124,7 @@ function renderDashboard(data) {
 
   // KR3
   html += `<div class="kr-card wide">
-    <div class="kr-top"><div class="kr-label">KR 3</div><div class="kr-pct" style="color:${pctColor(kr3p)}">${kr3p}%</div></div>
+    <div class="kr-top"><div class="kr-label">KR 3</div><div class="kr-pct" style="color:${pctColor(kr3p)}">${kr3p.toFixed(1)}%</div></div>
     <div class="kr-desc">신규 인스타 팔로워 — 가장 많은 채널 기준 적용</div>
     <div class="kr-nums"><span>최고 채널: <strong>${bestCh.toLocaleString()}명</strong></span><span>목표: <strong>3,000명</strong></span></div>
     <div class="kr-bar-bg"><div class="kr-bar-fill" style="width:${kr3p}%;background:${pctColor(kr3p)}"></div></div>
@@ -147,7 +147,7 @@ function renderDashboard(data) {
     const val = parseFloat(d[kr.id])||0;
     const p   = pct(val, kr.target);
     html += `<div class="kr-card">
-      <div class="kr-top"><div class="kr-label">${kr.label}</div><div class="kr-pct" style="color:${pctColor(p)}">${p}%</div></div>
+      <div class="kr-top"><div class="kr-label">${kr.label}</div><div class="kr-pct" style="color:${pctColor(p)}">${typeof p === "number" ? p.toFixed(1) : p}%</div></div>
       <div class="kr-desc">${kr.desc}</div>
       <div class="kr-nums"><span>현재: <strong>${kr.format(val)}</strong></span><span>목표: <strong>${kr.format(kr.target)}</strong></span></div>
       <div class="kr-bar-bg"><div class="kr-bar-fill" style="width:${p}%;background:${pctColor(p)}"></div></div>
