@@ -70,6 +70,7 @@
   .kr-pct-micro { font-size: 12px; color: rgba(0,0,0,0.5); letter-spacing: -0.12px; margin-bottom: 4px; }
   .kr-pct-val { font-family: var(--font-display); font-size: 28px; font-weight: 600; color: #000000; line-height: 1; letter-spacing: -0.5px; }
   .kr-target-line { font-size: 14px; color: rgba(0,0,0,0.45); letter-spacing: -0.224px; margin-bottom: 14px; }
+  .kr-note { font-size: 12px; color: rgba(0,0,0,0.4); letter-spacing: -0.12px; margin-bottom: 12px; }
   .kr-progress-bg { height: 3px; background: rgba(0,0,0,0.12); border-radius: 99px; overflow: hidden; }
   .kr-progress-fill { height: 100%; border-radius: 99px; background: #000000; transition: width 1s cubic-bezier(.4,0,.2,1); }
 
@@ -156,7 +157,7 @@
 <script>
 const KR_DEFS = [
   { id:'kr1', label:'KR 1', desc:'SNS 전환 매출',      target:10000000, fmt:v=>(v/10000).toFixed(0)+'만원', fmtTarget:'1,000만원' },
-  { id:'kr2', label:'KR 2', desc:'기존 인스타 팔로워', target:70000,    fmt:v=>(v/10000).toFixed(1)+'만명',  fmtTarget:'7만명' },
+  { id:'kr2', label:'KR 2', desc:'기존 인스타 팔로워', target:16770, baseline:53230, fmt:v=>((parseFloat(v)||0)-53230).toLocaleString()+'명 증가',  fmtTarget:'16,770명 증가 (→7만명)', note:'* 4/1일 기준 53,230명' },
   { id:'kr4', label:'KR 4', desc:'Meta 광고 ROAS',     target:700,      fmt:v=>v+'%',                        fmtTarget:'700%' },
   { id:'kr5', label:'KR 5', desc:'Meta CVR',           target:10,       fmt:v=>parseFloat(v).toFixed(1)+'%', fmtTarget:'10%' },
 ];
@@ -236,9 +237,17 @@ function renderDashboard(data) {
 }
 
 function krCard(kr, val, p) {
+  // kr2는 baseline 차감 후 달성률 계산
+  let displayPct = p;
+  if (kr.baseline !== undefined) {
+    const gained = Math.max(0, (parseFloat(val)||0) - kr.baseline);
+    displayPct = Math.min(100, Math.round(gained / kr.target * 1000) / 10);
+  }
+  const noteHTML = kr.note ? `<div class="kr-note">${kr.note}</div>` : '';
   return `<div class="kr-card fade-up">
     <div class="kr-tag">${kr.label}</div>
     <div class="kr-desc">${kr.desc}</div>
+    ${noteHTML}
     <div class="kr-data-row">
       <div class="kr-current-block">
         <div class="kr-current-micro">현재</div>
@@ -246,11 +255,11 @@ function krCard(kr, val, p) {
       </div>
       <div class="kr-pct-block">
         <div class="kr-pct-micro">달성률</div>
-        <div class="kr-pct-val">${p.toFixed(1)}%</div>
+        <div class="kr-pct-val">${displayPct.toFixed(1)}%</div>
       </div>
     </div>
     <div class="kr-target-line">목표 ${kr.fmtTarget}</div>
-    <div class="kr-progress-bg"><div class="kr-progress-fill" style="width:${p}%"></div></div>
+    <div class="kr-progress-bg"><div class="kr-progress-fill" style="width:${displayPct}%"></div></div>
   </div>`;
 }
 
