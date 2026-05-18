@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OKR 대시보드</title>
+<style>
+  :root {
+    --black:    #000000;
+    --apple-gray: #f5f5f7;
+    --white:    #ffffff;
+    --ink:      #1d1d1f;
+    --secondary:#6e6e73;
+    --border-soft: #d2d2d7;
+    --border-mid:  #86868b;
+    --blue:     #0071e3;
+    --blue-dark:#0066cc;
+    --graphite: #272729;
+    --graphite-b:#2a2a2c;
+    --font-display: 'SF Pro Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    --font-text:    'SF Pro Text',    'Helvetica Neue', Helvetica, Arial, sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-font-smoothing: antialiased; }
+  body { font-family: var(--font-text); background: var(--black); color: var(--white); min-height: 100vh; }
+
+  /* ── 로딩 ── */
+  .loading-overlay { position: fixed; inset: 0; background: var(--black); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; z-index: 200; }
+  .loading-spinner { width: 28px; height: 28px; border: 2px solid #333; border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-family: var(--font-text); font-size: 14px; color: var(--secondary); letter-spacing: -0.224px; }
+
+  /* ── 히어로 챕터 (검정 배경) ── */
+  .hero-chapter { background: var(--black); padding: 80px 2rem 72px; text-align: center; }
+  .hero-eyebrow { font-family: var(--font-text); font-size: 12px; font-weight: 400; color: #6ee7b7; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 12px; }
+  .hero-title { font-family: var(--font-display); font-size: 56px; font-weight: 600; line-height: 1.07; letter-spacing: -0.28px; color: #34d399; margin-bottom: 10px; }
+  .hero-subtitle { font-family: var(--font-text); font-size: 19px; font-weight: 400; color: #6ee7b7; line-height: 1.47; letter-spacing: -0.374px; }
+  .hero-meta { margin-top: 8px; font-size: 12px; color: #6ee7b7; font-family: var(--font-text); }
+
+  /* ── 요약 바 (검정 안) ── */
+  .summary-strip { background: #1a1a1a; border-top: 0.5px solid #3a3a3c; border-bottom: 0.5px solid #3a3a3c; padding: 36px 2rem; display: flex; align-items: center; justify-content: center; gap: 48px; flex-wrap: wrap; }
+  .strip-item { text-align: center; }
+  .strip-val { font-family: var(--font-display); font-size: 48px; font-weight: 500; color: #34d399; line-height: 1; letter-spacing: -1.5px; }
+  .strip-label { font-size: 13px; color: #6ee7b7; margin-top: 6px; letter-spacing: -0.12px; }
+  .strip-divider { width: 1px; height: 52px; background: #48484a; }
+  .strip-bar-wrap { flex: 1; min-width: 180px; max-width: 320px; }
+  .strip-bar-label { font-size: 13px; color: #6ee7b7; margin-bottom: 10px; letter-spacing: -0.12px; }
+  .strip-bar-bg { height: 4px; background: #48484a; border-radius: 99px; overflow: hidden; }
+  .strip-bar-fill { height: 100%; border-radius: 99px; background: #34d399; transition: width 1s cubic-bezier(.4,0,.2,1); }
+
+  /* ── 페일 그레이 챕터 ── */
+  .feature-chapter { background: #f5f5f7; padding: 60px 2rem; }
+  .chapter-inner { max-width: 980px; margin: 0 auto; }
+
+  /* ── KR 그리드 ── */
+  .kr-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: #6e6e73; border-radius: 28px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
+  @media (max-width: 700px) { .kr-grid { grid-template-columns: 1fr; } }
+  .kr-card { background: #ffffff; padding: 28px 28px 24px; position: relative; }
+  .kr-card.wide { grid-column: 1 / -1; background: #ffffff; }
+  .kr-card-inner { max-width: 100%; }
+
+  /* KR 카드 내부 */
+  .kr-tag { display: inline-block; font-size: 12px; font-weight: 500; color: #6e6e73; letter-spacing: 0.04em; margin-bottom: 6px; background: #f5f5f7; padding: 3px 10px; border-radius: 99px; }
+  .kr-desc { font-family: var(--font-display); font-size: 21px; font-weight: 600; color: #1d1d1f; line-height: 1.14; letter-spacing: 0.231px; margin-bottom: 20px; }
+  .kr-data-row { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 14px; }
+  .kr-current-block {}
+  .kr-current-micro { font-size: 12px; color: #6e6e73; letter-spacing: -0.12px; margin-bottom: 4px; }
+  .kr-current-val { font-family: var(--font-display); font-size: 36px; font-weight: 300; color: #1d1d1f; line-height: 1; letter-spacing: -0.5px; }
+  .kr-pct-block { text-align: right; }
+  .kr-pct-micro { font-size: 12px; color: #6e6e73; letter-spacing: -0.12px; margin-bottom: 4px; }
+  .kr-pct-val { font-family: var(--font-display); font-size: 28px; font-weight: 600; color: #1d1d1f; line-height: 1; letter-spacing: -0.5px; }
+  .kr-target-line { font-size: 14px; color: #6e6e73; letter-spacing: -0.224px; margin-bottom: 14px; }
+  .kr-note { font-size: 12px; color: #86868b; letter-spacing: -0.12px; margin-bottom: 12px; }
+  .kr-progress-bg { height: 3px; background: #d2d2d7; border-radius: 99px; overflow: hidden; }
+  .kr-progress-fill { height: 100%; border-radius: 99px; background: #0071e3; transition: width 1s cubic-bezier(.4,0,.2,1); }
+
+  /* ── KR3 채널 섹션 ── */
+  .ch-divider { height: 1px; background: #d2d2d7; margin: 24px 0; }
+  .ch-section-label { font-size: 12px; color: #6e6e73; letter-spacing: -0.12px; margin-bottom: 14px; }
+  .ch-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+  @media (max-width: 700px) { .ch-grid { grid-template-columns: repeat(3, 1fr); } }
+  .ch-card { background: #f5f5f7; border-radius: 12px; padding: 14px 16px; border: 1.5px solid transparent; transition: border-color 0.2s; }
+  .ch-card.best { background: #ffffff; border-color: #0071e3; }
+  .ch-color-dot { width: 6px; height: 6px; border-radius: 50%; margin-bottom: 8px; }
+  .ch-name { font-size: 12px; color: #6e6e73; letter-spacing: -0.12px; margin-bottom: 6px; }
+  .ch-val { font-family: var(--font-display); font-size: 24px; font-weight: 300; color: #1d1d1f; line-height: 1; letter-spacing: -0.5px; }
+  .ch-unit { font-size: 11px; color: var(--secondary); margin-top: 3px; }
+  .ch-top-tag { display: none; font-size: 10px; font-weight: 600; color: #0071e3; letter-spacing: -0.08px; margin-top: 6px; }
+  .ch-card.best .ch-top-tag { display: block; }
+
+  /* ── 전체 달성률 카드 (그레이 챕터 안) ── */
+  .overview-card { background: var(--white); border-radius: 18px; padding: 32px 32px 28px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .overview-top { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 20px; }
+  .overview-pct { font-family: var(--font-display); font-size: 80px; font-weight: 300; color: var(--ink); line-height: 1; letter-spacing: -2px; }
+  .overview-pct span { font-size: 40px; color: var(--secondary); }
+  .overview-right { text-align: right; }
+  .overview-filled { font-family: var(--font-display); font-size: 32px; font-weight: 300; color: var(--ink); letter-spacing: -0.5px; }
+  .overview-filled-label { font-size: 12px; color: var(--secondary); margin-top: 4px; }
+  .overview-bar-bg { height: 4px; background: var(--border-soft); border-radius: 99px; overflow: hidden; }
+  .overview-bar-fill { height: 100%; border-radius: 99px; background: var(--blue); transition: width 1.2s cubic-bezier(.4,0,.2,1); }
+
+  /* ── 섹션 타이틀 ── */
+  .section-title { font-family: var(--font-display); font-size: 28px; font-weight: 600; color: #1d1d1f; letter-spacing: 0.196px; margin-bottom: 16px; }
+
+  /* 애니메이션 */
+  .fade-up { animation: fadeUp 0.5s ease both; }
+  .fade-up:nth-child(1) { animation-delay: 0.05s; }
+  .fade-up:nth-child(2) { animation-delay: 0.10s; }
+  .fade-up:nth-child(3) { animation-delay: 0.15s; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">불러오는 중</div>
+</div>
+
+<!-- 히어로 챕터 -->
+<div class="hero-chapter">
+  <div class="hero-eyebrow">Objective</div>
+  <div class="hero-title">그로스 엔진이 된다</div>
+  <div class="hero-subtitle">콘텐츠를 연료로 매출을 만드는</div>
+  <div class="hero-meta" id="lastDate"></div>
+</div>
+
+<!-- 요약 스트립 -->
+<div class="summary-strip">
+  <div class="strip-item">
+    <div class="strip-val" id="totalPct">—</div>
+    <div class="strip-label">전체 달성률 (%)</div>
+  </div>
+  <div class="strip-divider"></div>
+  <div class="strip-bar-wrap">
+    <div class="strip-bar-label">KR 평균 진행률</div>
+    <div class="strip-bar-bg"><div class="strip-bar-fill" id="sumBarFill" style="width:0%"></div></div>
+  </div>
+  <div class="strip-divider"></div>
+  <div class="strip-item">
+    <div class="strip-val" id="filledKR">—</div>
+    <div class="strip-label">입력된 KR</div>
+  </div>
+</div>
+
+<!-- 페일 그레이 챕터 -->
+<div class="feature-chapter">
+  <div class="chapter-inner">
+
+    <!-- 개별 KR 그리드 -->
+    <div class="section-title">Key Results</div>
+    <div class="kr-grid" id="krGrid"></div>
+
+  </div>
+</div>
+
+<script>
+const KR_DEFS = [
+  { id:'kr1', label:'KR 1', desc:'SNS 전환 매출',      target:10000000, fmt:v=>(v/10000).toFixed(0)+'만원', fmtTarget:'1,000만원' },
+  { id:'kr2', label:'KR 2', desc:'기존 인스타 팔로워', target:16770, baseline:53230, fmt:v=>((parseFloat(v)||0)-53230).toLocaleString()+'명 증가',  fmtTarget:'16,770명 증가 (→7만명)', note:'* 4/1일 기준 53,230명' },
+  { id:'kr4', label:'KR 4', desc:'Meta 광고 ROAS',     target:700,      fmt:v=>v+'%',                        fmtTarget:'700%' },
+  { id:'kr5', label:'KR 5', desc:'Meta CVR',           target:10,       fmt:v=>parseFloat(v).toFixed(1)+'%', fmtTarget:'10%' },
+];
+const CH_KEYS   = ['kr3_싹그로스','kr3_노예스','kr3_영도남자','kr3_원팬','kr3_채널5'];
+const CH_NAMES  = ['싹그로스','노예스','영도남자','원팬','채널 5'];
+const CH_COLORS = ['#7F77DD','#1D9E75','#378ADD','#D4537E','#BA7517'];
+const KR3_TARGET = 3000;
+
+function pct(val, target){ return Math.min(100, Math.round((parseFloat(val)||0) / target * 1000) / 10); }
+
+function renderDashboard(data) {
+  const d = data.data || {};
+  const chVals = CH_KEYS.map(k => parseFloat(d[k])||0);
+  const bestCh = Math.max(0, ...chVals);
+  const kr3p   = pct(bestCh, KR3_TARGET);
+  const allPcts = KR_DEFS.map(kr => pct(d[kr.id]||0, kr.target));
+  allPcts.push(kr3p);
+  const avg    = Math.round(allPcts.reduce((a,b)=>a+b,0) / 5 * 10) / 10;
+  const filled = KR_DEFS.filter(kr => d[kr.id] && d[kr.id] !== '').length + (bestCh > 0 ? 1 : 0);
+
+  document.getElementById('totalPct').textContent   = avg.toFixed(1);
+  document.getElementById('filledKR').textContent   = filled + ' / 5';
+  document.getElementById('sumBarFill').style.width = avg + '%';
+  if (data.updatedAt) document.getElementById('lastDate').textContent = '기준일 ' + data.updatedAt;
+
+  const grid = document.getElementById('krGrid');
+  let html = '';
+
+  // KR1 KR2
+  KR_DEFS.slice(0,2).forEach(kr => {
+    const val = parseFloat(d[kr.id])||0;
+    const p   = pct(val, kr.target);
+    html += krCard(kr, val, p);
+  });
+
+  // KR3
+  html += `<div class="kr-card wide fade-up">
+    <div class="kr-tag">KR 3</div>
+    <div class="kr-desc">신규 인스타 팔로워</div>
+    <div class="kr-data-row">
+      <div class="kr-current-block">
+        <div class="kr-current-micro">최고 채널 팔로워</div>
+        <div class="kr-current-val">${bestCh > 0 ? bestCh.toLocaleString() : '—'}<span style="font-size:17px;color:var(--secondary);font-weight:400"> 명</span></div>
+      </div>
+      <div class="kr-pct-block">
+        <div class="kr-pct-micro">달성률</div>
+        <div class="kr-pct-val">${kr3p.toFixed(1)}%</div>
+      </div>
+    </div>
+    <div class="kr-target-line">목표 ${KR3_TARGET.toLocaleString()}명 기준 — 채널 중 가장 많은 팔로워 적용</div>
+    <div class="kr-progress-bg"><div class="kr-progress-fill" style="width:${kr3p}%"></div></div>
+    <div class="ch-divider"></div>
+    <div class="ch-section-label">채널별 현황</div>
+    <div class="ch-grid">
+      ${chVals.map((val,i) => {
+        const isBest = bestCh > 0 && val === bestCh;
+        return `<div class="ch-card${isBest?' best':''}">
+          <div class="ch-color-dot" style="background:${CH_COLORS[i]}"></div>
+          <div class="ch-name">${CH_NAMES[i]}</div>
+          <div class="ch-val">${val > 0 ? val.toLocaleString() : '—'}</div>
+          <div class="ch-unit">명</div>
+          <div class="ch-top-tag">TOP 채널</div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+
+  // KR4 KR5
+  KR_DEFS.slice(2).forEach(kr => {
+    const val = parseFloat(d[kr.id])||0;
+    const p   = pct(val, kr.target);
+    html += krCard(kr, val, p);
+  });
+
+  grid.innerHTML = html;
+  document.getElementById('loadingOverlay').style.display = 'none';
+}
+
+function krCard(kr, val, p) {
+  // kr2는 baseline 차감 후 달성률 계산
+  let displayPct = p;
+  if (kr.baseline !== undefined) {
+    const gained = Math.max(0, (parseFloat(val)||0) - kr.baseline);
+    displayPct = Math.min(100, Math.round(gained / kr.target * 1000) / 10);
+  }
+  const noteHTML = kr.note ? `<div class="kr-note">${kr.note}</div>` : '';
+  return `<div class="kr-card fade-up">
+    <div class="kr-tag">${kr.label}</div>
+    <div class="kr-desc">${kr.desc}</div>
+    ${noteHTML}
+    <div class="kr-data-row">
+      <div class="kr-current-block">
+        <div class="kr-current-micro">현재</div>
+        <div class="kr-current-val">${kr.fmt(val)}</div>
+      </div>
+      <div class="kr-pct-block">
+        <div class="kr-pct-micro">달성률</div>
+        <div class="kr-pct-val">${displayPct.toFixed(1)}%</div>
+      </div>
+    </div>
+    <div class="kr-target-line">목표 ${kr.fmtTarget}</div>
+    <div class="kr-progress-bg"><div class="kr-progress-fill" style="width:${displayPct}%"></div></div>
+  </div>`;
+}
+
+async function loadData() {
+  try {
+    const res = await fetch('okr_data.json?t=' + Date.now());
+    if (!res.ok) throw new Error(res.status);
+    renderDashboard(await res.json());
+  } catch(e) {
+    document.getElementById('loadingOverlay').style.display = 'none';
+    document.getElementById('krGrid').innerHTML = `<div class="kr-card wide" style="color:var(--secondary);font-size:14px;text-align:center;padding:40px">데이터를 불러올 수 없습니다. Actions 실행 후 다시 시도해주세요.</div>`;
+  }
+}
+loadData();
+</script>
+</body>
+</html>
