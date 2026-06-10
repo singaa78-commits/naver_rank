@@ -283,7 +283,7 @@ def fetch_okr_data():
                 continue
             val = row[i] if i < len(row) else ""
             if val != "":
-                latest[h] = val
+                latest[h] = str(val).replace(",", "")
                 if date > latest_date:
                     latest_date = date
 
@@ -298,9 +298,13 @@ def fetch_okr_data():
                 continue
             val = row[i] if i < len(row) else ""
             if val != "":
-                if h not in history:
-                    history[h] = []
-                history[h].append({"date": date, "value": float(val)})
+                try:
+                    numeric = float(str(val).replace(",", ""))
+                    if h not in history:
+                        history[h] = []
+                    history[h].append({"date": date, "value": numeric})
+                except ValueError:
+                    pass
 
     output = {
         "updatedAt": latest_date,
