@@ -108,6 +108,21 @@
   .fade-up:nth-child(2) { animation-delay: 0.10s; }
   .fade-up:nth-child(3) { animation-delay: 0.15s; }
   @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ── 트렌드 차트 섹션 ── */
+  .chart-section { background: #000; padding: 60px 2rem; }
+  .chart-inner { max-width: 980px; margin: 0 auto; }
+  .chart-section-title { font-family: var(--font-display); font-size: 28px; font-weight: 600; color: #34d399; letter-spacing: 0.196px; margin-bottom: 6px; }
+  .chart-section-sub { font-size: 14px; color: #6e6e73; margin-bottom: 32px; letter-spacing: -0.224px; }
+  .chart-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  @media (max-width: 700px) { .chart-grid { grid-template-columns: 1fr; } }
+  .chart-card { background: #1c1c1e; border-radius: 20px; padding: 24px 24px 16px; border: 0.5px solid #3a3a3c; }
+  .chart-card.wide { grid-column: 1 / -1; }
+  .chart-card-label { font-size: 11px; color: #6e6e73; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 4px; }
+  .chart-card-title { font-family: var(--font-display); font-size: 17px; font-weight: 600; color: #fff; margin-bottom: 20px; letter-spacing: -0.374px; }
+  .chart-canvas-wrap { position: relative; width: 100%; height: 140px; }
+  canvas.trend-chart { width: 100% !important; height: 140px !important; }
+  .chart-empty { font-size: 13px; color: #48484a; text-align: center; padding: 40px 0; }
 </style>
 </head>
 <body>
@@ -153,6 +168,100 @@
 
   </div>
 </div>
+
+<!-- 트렌드 차트 챕터 -->
+<div class="chart-section">
+  <div class="chart-inner">
+    <div class="chart-section-title">변화 추이</div>
+    <div class="chart-section-sub">KR별 주간 달성 흐름</div>
+    <div class="chart-grid" id="chartGrid"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const KR3_BASELINE = 53230;
+const KR3_TARGET_VAL = 3000;
+const CHART_DEFS = [
+  { key:'kr1',         label:'KR 1', title:'SNS 전환 매출',      color:'#34d399', wide:false,
+    transform: v => v/10000, yLabel:'만원' },
+  { key:'kr2',         label:'KR 2', title:'기존 인스타 팔로워 증가', color:'#a78bfa', wide:false,
+    transform: v => Math.max(0, v - KR3_BASELINE), yLabel:'명' },
+  { key:'kr3_싹그로스', label:'KR 3-1', title:'싹그로스 팔로워',   color:'#7F77DD', wide:false,
+    transform: v => v, yLabel:'명' },
+  { key:'kr3_노예스',   label:'KR 3-2', title:'노예스 팔로워',     color:'#1D9E75', wide:false,
+    transform: v => v, yLabel:'명' },
+  { key:'kr3_영도남자', label:'KR 3-3', title:'영도남자 팔로워',   color:'#378ADD', wide:false,
+    transform: v => v, yLabel:'명' },
+  { key:'kr3_원팬',     label:'KR 3-4', title:'원팬 팔로워',       color:'#D4537E', wide:false,
+    transform: v => v, yLabel:'명' },
+  { key:'kr4',         label:'KR 4', title:'Meta ROAS',           color:'#fb923c', wide:false,
+    transform: v => v, yLabel:'%' },
+  { key:'kr5',         label:'KR 5', title:'Meta CVR',            color:'#f472b6', wide:false,
+    transform: v => v, yLabel:'%' },
+];
+
+function buildCharts(history) {
+  const grid = document.getElementById('chartGrid');
+  grid.innerHTML = '';
+
+  CHART_DEFS.forEach(def => {
+    const entries = (history[def.key] || []).sort((a,b) => a.date.localeCompare(b.date));
+    const card = document.createElement('div');
+    card.className = 'chart-card' + (def.wide ? ' wide' : '');
+    card.innerHTML = `
+      <div class="chart-card-label">${def.label}</div>
+      <div class="chart-card-title">${def.title}</div>
+      ${entries.length < 2
+        ? '<div class="chart-empty">데이터 2개 이상 필요</div>'
+        : '<div class="chart-canvas-wrap"><canvas class="trend-chart" id="chart-' + def.key + '"></canvas></div>'
+      }`;
+    grid.appendChild(card);
+
+    if (entries.length < 2) return;
+
+    const labels = entries.map(e => e.date.slice(5)); // MM-DD
+    const values = entries.map(e => def.transform(e.value));
+
+    new Chart(document.getElementById('chart-' + def.key), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          data: values,
+          borderColor: def.color,
+          backgroundColor: def.color + '18',
+          borderWidth: 2,
+          pointRadius: 3,
+          pointBackgroundColor: def.color,
+          tension: 0.35,
+          fill: true,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: {
+          backgroundColor: '#2c2c2e',
+          titleColor: '#fff',
+          bodyColor: '#a1a1a6',
+          borderColor: '#3a3a3c',
+          borderWidth: 1,
+          callbacks: { label: ctx => ctx.parsed.y.toLocaleString() + ' ' + def.yLabel }
+        }},
+        scales: {
+          x: { grid: { color: '#2c2c2e' }, ticks: { color: '#6e6e73', font: { size: 11 } } },
+          y: { grid: { color: '#2c2c2e' }, ticks: { color: '#6e6e73', font: { size: 11 },
+            callback: v => v.toLocaleString() + def.yLabel } }
+        }
+      }
+    });
+  });
+}
+
+// loadData 함수에 buildCharts 호출 추가 (window 이벤트로 데이터 전달)
+window.addEventListener('okrDataLoaded', e => buildCharts(e.detail.history || {}));
+</script>
 
 <script>
 const KR_DEFS = [
@@ -267,7 +376,9 @@ async function loadData() {
   try {
     const res = await fetch('okr_data.json?t=' + Date.now());
     if (!res.ok) throw new Error(res.status);
-    renderDashboard(await res.json());
+    const data = await res.json();
+    renderDashboard(data);
+    window.dispatchEvent(new CustomEvent('okrDataLoaded', { detail: data }));
   } catch(e) {
     document.getElementById('loadingOverlay').style.display = 'none';
     document.getElementById('krGrid').innerHTML = `<div class="kr-card wide" style="color:var(--secondary);font-size:14px;text-align:center;padding:40px">데이터를 불러올 수 없습니다. Actions 실행 후 다시 시도해주세요.</div>`;

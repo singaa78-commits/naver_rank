@@ -287,10 +287,26 @@ def fetch_okr_data():
                 if date > latest_date:
                     latest_date = date
 
+    # 시계열 데이터 구성 (날짜별 전체 행)
+    history = {}  # { col: [ {date, value}, ... ] }
+    for row in rows[1:]:
+        date = row[0] if row else ""
+        if not date:
+            continue
+        for i, h in enumerate(headers):
+            if h == "date":
+                continue
+            val = row[i] if i < len(row) else ""
+            if val != "":
+                if h not in history:
+                    history[h] = []
+                history[h].append({"date": date, "value": float(val)})
+
     output = {
         "updatedAt": latest_date,
         "data": latest,
         "headers": headers,
+        "history": history,
     }
     os.makedirs("public", exist_ok=True)
     with open("public/okr_data.json", "w", encoding="utf-8") as f:
