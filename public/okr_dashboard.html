@@ -124,6 +124,7 @@
   canvas.trend-chart { width: 100% !important; height: 140px !important; }
   .chart-empty { font-size: 13px; color: #48484a; text-align: center; padding: 40px 0; }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -178,7 +179,6 @@
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
 const KR3_BASELINE = 53230;
 const KR3_TARGET_VAL = 3000;
@@ -259,8 +259,7 @@ function buildCharts(history) {
   });
 }
 
-// loadData 함수에 buildCharts 호출 추가 (window 이벤트로 데이터 전달)
-window.addEventListener('okrDataLoaded', e => buildCharts(e.detail.history || {}));
+
 </script>
 
 <script>
@@ -378,7 +377,7 @@ async function loadData() {
     if (!res.ok) throw new Error(res.status);
     const data = await res.json();
     renderDashboard(data);
-    window.dispatchEvent(new CustomEvent('okrDataLoaded', { detail: data }));
+    buildCharts(data.history || {});
   } catch(e) {
     document.getElementById('loadingOverlay').style.display = 'none';
     document.getElementById('krGrid').innerHTML = `<div class="kr-card wide" style="color:var(--secondary);font-size:14px;text-align:center;padding:40px">데이터를 불러올 수 없습니다. Actions 실행 후 다시 시도해주세요.</div>`;
